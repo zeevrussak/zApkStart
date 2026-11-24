@@ -3480,6 +3480,24 @@ if (!gotLock) {
               );
               await new Promise((r) => setTimeout(r, 2500));
             }
+            if (process.argv.includes('--about')) {
+              // 关于页：直接点导航里的 about 分类（品牌/署名/维护者信息的验收截图）
+              await mainWindow.webContents.executeJavaScript(`
+                (async () => {
+                  document.getElementById('btnSettings').click();
+                  for (let i = 0; i < 50; i++) {
+                    await new Promise((r) => setTimeout(r, 100));
+                    if (document.getElementById('settingsMask').classList.contains('on')) break;
+                  }
+                  const nav = document.querySelector('#setNav .set-nav-item[data-cat="about"]');
+                  if (nav) nav.click();
+                  await new Promise((r) => setTimeout(r, 800));
+                  return !!document.querySelector('#aboutGroup');
+                })()
+              `);
+              console.log('[smoke] about opened');
+              await new Promise((r) => setTimeout(r, 600));
+            }
             if (process.argv.includes('--settings')) {
               const opened = await mainWindow.webContents.executeJavaScript(`
                 (async () => {
@@ -3521,6 +3539,24 @@ if (!gotLock) {
                 "document.getElementById('downloadGroup').scrollIntoView({ block: 'start' }); true;",
               );
               await snap(out.replace(/\.png$/i, '-download.png'));
+            }
+            if (process.argv.includes('--about')) {
+              // 关于页：直接点导航里的 about 分类（品牌/署名/维护者信息的验收截图）
+              await mainWindow.webContents.executeJavaScript(`
+                (async () => {
+                  document.getElementById('btnSettings').click();
+                  for (let i = 0; i < 50; i++) {
+                    await new Promise((r) => setTimeout(r, 100));
+                    if (document.getElementById('settingsMask').classList.contains('on')) break;
+                  }
+                  const nav = document.querySelector('#setNav .set-nav-item[data-cat="about"]');
+                  if (nav) nav.click();
+                  await new Promise((r) => setTimeout(r, 800));
+                  return !!document.querySelector('#aboutGroup');
+                })()
+              `);
+              console.log('[smoke] about opened');
+              await new Promise((r) => setTimeout(r, 600));
             }
             if (process.argv.includes('--settings')) {
               // 再拍一张「关于」区（二维码 / GitHub / Powered by）

@@ -879,6 +879,7 @@ module.exports = {
   group_title_about: '关于',
   about_desc: '双击即装的 Windows 安卓应用启动器：APK 安装、桌面快捷方式、独立窗口运行、文件双向互通。',
   btn_open_manual: '打开使用手册（含故障解决方案）',
+  about_maintainer: '由 Ze\'ev Russak 维护 — 为个人使用而开发，公开共享，希望能对他人也有所帮助；不承担持续维护或支持的义务。',
   about_attribution: '基于 ApkStart（作者 RoutineMiku，MIT）',
 
   // ---- 设置页：实验室 ----

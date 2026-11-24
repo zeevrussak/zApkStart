@@ -879,6 +879,7 @@ module.exports = {
   group_title_about: 'About',
   about_desc: 'A double-click-to-install Windows Android app launcher: APK install, desktop shortcuts, separate window running, two-way file exchange.',
   btn_open_manual: 'Open the user manual (with troubleshooting solutions)',
+  about_maintainer: 'Maintained by Ze\'ev Russak — developed for personal use and shared publicly in the hope it may be useful to others, without any commitment to ongoing maintenance or support.',
   about_attribution: 'Based on ApkStart by RoutineMiku (MIT)',
 
   // ---- settings: lab ----

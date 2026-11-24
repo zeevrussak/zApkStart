@@ -128,3 +128,13 @@ Runtime.client() ── every existing adb-only pipeline (installer, sharer,
 5. **Phase 4**: `standalone-test` rewrite (new invariants); `test/wsa-test.js` completion; full `npm test` + gates; `arm64-research.md` + README capability-matrix updates; this doc's spike checklist for a WSA machine.
 
 *Drafted with EGM.*
+
+## Implementation status (2026-11-24)
+
+All four phases implemented; **npm test: 445 passed, 0 failed** (wsa-test 31 new cases;
+standalone-test rewritten to the new contract; arch/preflight/auto extended). Committed as
+`24691c5`. Deviations from this doc, recorded in `review.md`: `routeForApp` lives in
+`installer.js` (main.js can't be required by pure-Node tests); `abiDirectionFor` consults the
+device abilist (a WSA build with x86 translation installs natively); `deps.budget` injection seam
+added to WsaBackend for testable poll budgets. The `wsa-start-adb-port` spike checklist above
+remains gated on a real WSA machine.

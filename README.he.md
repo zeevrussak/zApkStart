@@ -62,6 +62,10 @@ npx electron-builder --win nsis --arm64 --config electron-builder.yml   # בני
 * ייחוס והפרדה בין ה‑fork למקור: [NOTICE.md](NOTICE.md)
 * הערות ארכיטקטורה של המקור (בירושה, ללא תחזוקה): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
+## תחזוקה
+
+‏zApkStart הוא פרויקט אישי שפותח ומתוחזק על ידי [Ze'ev Russak](https://github.com/zeevrussak) לצרכיו הפרטיים. הוא מפורסם לציבור בתקווה שימצא שימוש גם אצל אחרים. הוא מוצע **כמו שהוא**, ללא התחייבות לתחזוקה שוטפת, תמיכה או פיתוח — בעיות ו-PRs מתקבלים בברכה, אך אין ערובה שיטופלו. לכתב הוויתור המשפטי ראו [LICENSE](LICENSE).
+
 ## קרדיט וייחוס
 
 zApkStart קיים בזכות RoutineMiku שבנה את ApkStart. אם אתם עושים fork או מפיצים את הקוד — שמרו על

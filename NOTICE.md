@@ -8,6 +8,10 @@
   verbatim in that file and must not be removed.
 * Fork modifications: © 2026 zApkStart contributors (Ze'ev Russak and successors), released under
   the same MIT license.
+* **Maintainer:** Ze'ev Russak — zApkStart is developed primarily for personal use and shared
+  publicly without any commitment to ongoing maintenance, support, or feature development.
+  It is provided "as is"; bugs and pull requests are welcome but are not guaranteed to be
+  addressed.
 
 ## Relationship to the original
 

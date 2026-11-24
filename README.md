@@ -68,6 +68,10 @@ CI cross-builds the ARM64 NSIS installer and verifies the produced binary is a t
 * Design history and goldfish review records: [docs/zapkstart/](docs/zapkstart/)
 * Attribution and fork/upstream separation: [NOTICE.md](NOTICE.md)
 
+## Maintenance
+
+zApkStart is a personal project, developed and maintained by [Ze'ev Russak](https://github.com/zeevrussak) for his own use. It is published publicly in the hope that others may find it useful. It is provided **as is**, without any commitment to ongoing maintenance, support, or feature development — issues and pull requests are welcome, but there is no guarantee they will be addressed. The legal warranty disclaimer is in the [LICENSE](LICENSE).
+
 ## Credits and citation
 
 zApkStart exists because RoutineMiku built ApkStart. If you fork or redistribute this code, keep
