@@ -3,7 +3,7 @@
  * 独立运行守卫：安装包里**不允许**出现第三方模拟器的任何文件。
  *
  * 为什么需要一道构建期检查：
- *   ApkStart 的安装包（NSIS / 便携版 / MSIX）必须开箱即用 —— 自带 emulator +
+ *   zApkStart 的安装包（NSIS / 便携版 / MSIX）必须开箱即用 —— 自带 emulator +
  *   platform-tools + 系统镜像，装完就能跑，不要求用户先装 MuMu / 雷电 / 蓝叠。
  *   0.5.6 起更进一步：**代码里根本没有第三方底座**，安装的不是「自带运行时 + 可选复用」，
  *   而是「只有自带运行时」。所以这里除了拦二进制，也拦第三方底座的适配器源码
@@ -126,7 +126,7 @@ function assertStandalone(dir, { label = '打包产物', exit = true } = {}) {
   console.error(`\n[守卫] ${label} 里混进了第三方模拟器（${vendors}）：`);
   for (const h of hits) console.error(`  - ${h.path}`);
   console.error('');
-  console.error('ApkStart 的安装包必须自带运行时、独立运行：不能依赖、不能捆绑别的模拟器，');
+  console.error('zApkStart 的安装包必须自带运行时、独立运行：不能依赖、不能捆绑别的模拟器，');
   console.error('也不允许把「接管别人模拟器」的适配器源码带回来。');
   console.error('请把上面这些路径从打包目录里删掉后重试。\n');
   if (exit) process.exit(4);

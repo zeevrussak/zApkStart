@@ -25,6 +25,8 @@ const doctor = require('../src/core/doctor');
 const layers = require('../src/core/layers');
 const pointer = require('../src/core/pointer');
 const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src/core/adb');
+// adb 文案断言钉住中文（上游作者的原文文案）；i18n 默认 auto 会跟随本机语言
+require('../src/core/i18n').setActiveT('zh-CN', '');
 
 (async () => {
   console.log('\n[doctor.js 自动参数]');
@@ -199,14 +201,16 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
 
   await test('Android 14 老 targetSdk 应用失败有明确指引', () => {
     const s = friendlyInstallError('Failure [INSTALL_FAILED_DEPRECATED_SDK_VERSION: app must target at least 23]');
-    assert(s.includes('Android 14') && s.includes('自动'), s);
+    const text = typeof s === 'string' ? s : s.message;
+    assert(text.includes('Android 14') && text.includes('自动'), text);
   });
 
   await test('ARM 翻译层崩溃能给出可执行的中文结论', () => {
     const s = friendlyLaunchError('F DEBUG: DoBadTrampoline libndk_translation SIGABRT', 'com.phoenix.read');
-    assert(s.includes('ARM 翻译层') && s.includes('兼容镜像'), s);
+    const text = typeof s === 'string' ? s : s.message;
+    assert(text.includes('ARM 翻译层') && text.includes('兼容镜像'), text);
     // 0.6.3 单镜像：不能再无条件承诺「会自动切换重试」，要说清「已启用则属限制」
-    assert(s.includes('已启用') && s.includes('限制'), `文案要说清单镜像下的真实后果：${s}`);
+    assert(text.includes('已启用') && text.includes('限制'), `文案要说清单镜像下的真实后果：${text}`);
   });
 
   await test('反模拟 / 安全校验导致的退出给出「限制不是故障」的中文说明', () => {
@@ -217,18 +221,20 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
       'anti-debug hook detected',
     ]) {
       const s = friendlyLaunchError(raw, 'com.bank.app');
-      assert(s.includes('限制') && s.includes('不是故障'), `${raw} → ${s}`);
-      assert(s.includes('手册 6.3'), `应指向手册 6.3：${s}`);
+      const text = typeof s === 'string' ? s : s.message;
+      assert(text.includes('限制') && text.includes('不是故障'), `${raw} → ${text}`);
+      assert(text.includes('手册 6.3'), `应指向手册 6.3：${text}`);
     }
     // 不能把反模拟误说成翻译层崩溃而让用户白等一次镜像切换
     const s = friendlyLaunchError('emulator detected', 'com.bank.app');
-    assert(!s.includes('自动切换'), `反模拟不该承诺切镜像：${s}`);
+    const text2 = typeof s === 'string' ? s : s.message;
+    assert(!text2.includes('自动切换'), `反模拟不该承诺切镜像：${text2}`);
   });
 
   await test('反模拟崩溃报错能定位到手册 6.3', () => {
     const manual = require('../src/core/manual');
     const s = friendlyLaunchError('emulator detected / play integrity failed', 'com.bank.app');
-    const t = manual.topicForError(s);
+    const t = manual.topicForError(typeof s === 'string' ? s : s.message);
     assert(t.id === 'arm', `反模拟报错应到 ARM/6.3 章节，实际 ${t.id}`);
   });
 
@@ -490,23 +496,23 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     // 快照确实存在时才走 quickboot。注意要真的「像一个完整快照」：
     // 保存中断会留下只有几十字节 snapshot.pb 的空壳，那种必须判定为没有快照，
     // 否则 emulator 会尝试加载、失败，再回退冷启动，白等几秒。
-    const avdDir = path.join(emu.provisioner.paths().avdHome, 'apkstart.avd');
+    const avdDir = path.join(emu.provisioner.paths().avdHome, 'zapkstart.avd');
     const snapDir = path.join(avdDir, 'snapshots');
     const created = !fs.existsSync(snapDir);
-    fs.mkdirSync(path.join(snapDir, 'apkstart'), { recursive: true });
+    fs.mkdirSync(path.join(snapDir, 'zapkstart'), { recursive: true });
 
     // 空壳（12 字节 pb + 没有 ram.img）必须当作「没有快照」
-    fs.writeFileSync(path.join(snapDir, 'apkstart', 'snapshot.pb'), 'x'.repeat(12));
+    fs.writeFileSync(path.join(snapDir, 'zapkstart', 'snapshot.pb'), 'x'.repeat(12));
     assert(!emu.hasSnapshot(), '不完整的快照不能被当成可用快照');
     const broken = emu.buildArgs({ gpu: 'software', memoryMB: 2048, cores: 2, snapshot: true }).join(' ');
     assert(/-no-snapshot-load/.test(broken), '空壳快照必须回退冷启动（跳过加载）');
 
     // 完整快照：pb 有内容 + ram.img 有数据（上一步的空壳会被 hasSnapshot 顺手清掉）
-    fs.mkdirSync(path.join(snapDir, 'apkstart'), { recursive: true });
-    fs.writeFileSync(path.join(snapDir, 'apkstart', 'snapshot.pb'), 'x'.repeat(2048));
-    fs.writeFileSync(path.join(snapDir, 'apkstart', 'ram.img'), Buffer.alloc(2 * 1024 * 1024));
+    fs.mkdirSync(path.join(snapDir, 'zapkstart'), { recursive: true });
+    fs.writeFileSync(path.join(snapDir, 'zapkstart', 'snapshot.pb'), 'x'.repeat(2048));
+    fs.writeFileSync(path.join(snapDir, 'zapkstart', 'ram.img'), Buffer.alloc(2 * 1024 * 1024));
     const withSnap = emu.buildArgs({ gpu: 'software', memoryMB: 2048, cores: 2, snapshot: true }).join(' ');
-    assert(/-snapshot apkstart/.test(withSnap), '有快照时应使用 quickboot 快照');
+    assert(/-snapshot zapkstart/.test(withSnap), '有快照时应使用 quickboot 快照');
     assert(!/-no-snapshot-load/.test(withSnap), '有完整快照时不该跳过加载');
     if (created) fs.rmSync(snapDir, { recursive: true, force: true });
 
@@ -663,15 +669,15 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
   await test('新版 emulator 写的 ram.bin 必须被认作完整快照（否则刚存好的 3GB 会被当空壳删掉）', () => {
     const { EmulatorEngine } = require('../src/core/emulator');
     const emu = new EmulatorEngine(path.join(__dirname, '..'));
-    const avdDir = path.join(emu.provisioner.paths().avdHome, 'apkstart.avd');
-    const snapDir = path.join(avdDir, 'snapshots', 'apkstart');
+    const avdDir = path.join(emu.provisioner.paths().avdHome, 'zapkstart.avd');
+    const snapDir = path.join(avdDir, 'snapshots', 'zapkstart');
     fs.rmSync(path.join(avdDir, 'snapshots'), { recursive: true, force: true });
     fs.mkdirSync(snapDir, { recursive: true });
     fs.writeFileSync(path.join(snapDir, 'snapshot.pb'), 'x'.repeat(2048));
     fs.writeFileSync(path.join(snapDir, 'ram.bin'), Buffer.alloc(2 * 1024 * 1024));
     assert(emu.hasSnapshot(), 'ram.bin 应被认作完整快照');
     const args = emu.buildArgs({ gpu: 'software', memoryMB: 2048, cores: 2, snapshot: true }).join(' ');
-    assert(/-snapshot apkstart/.test(args), '有快照时应走 quickboot');
+    assert(/-snapshot zapkstart/.test(args), '有快照时应走 quickboot');
     assert(!/-no-snapshot-load/.test(args), '有完整快照时不该跳过加载');
     fs.rmSync(path.join(avdDir, 'snapshots'), { recursive: true, force: true });
   });
@@ -1036,7 +1042,7 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(/agent\.setTitle\(/.test(appwin), '独立窗口打开时要真的改标题');
   });
 
-  await test('中文环境：开机注入 locale、静默装拼音输入法、captive portal 国内端点', () => {
+  await test('Guest 语言：跟随界面语言（he→he-IL），拼音 IME 只装中文，captive portal 按网络档', () => {
     const root = path.join(__dirname, '..');
     const emuJs = fs.readFileSync(path.join(root, 'src', 'core', 'emulator.js'), 'utf8');
     const adbJs = fs.readFileSync(path.join(root, 'src', 'core', 'adb.js'), 'utf8');
@@ -1052,22 +1058,27 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(!/-prop[\s\S]{0,80}persist\.sys\.locale/.test(emuCode),
       '不能再用无效的 -prop persist.sys.locale');
     assert(/_guestLocale/.test(emuJs), '要有可配置的语言来源');
-    // 默认中文
-    assert(/locale:\s*'zh-CN'/.test(storeJs), '默认语言必须是简体中文');
-    assert(/chineseIme:\s*true/.test(storeJs), '默认开启中文输入法');
-
-    // 输入法：随包带 APK、开机装好并启用
+    // zApkStart：guest 语言默认跟随界面语言（希伯来语界面 → he-IL guest）
+    assert(/locale:\s*'follow'/.test(storeJs), 'guest 语言默认应跟随界面语言（follow）');
+    assert(/_resolveGuestLocale/.test(engJs), 'engine 要解析 guest 语言（follow → UI locale）');
+    assert(/he-IL/.test(engJs), '希伯来语界面要映射到 he-IL guest（Android 原生 RTL locale）');
+    // 拼音 IME 仍在包里，但只在 guest 是中文时安装
     assert(fs.existsSync(path.join(root, 'assets', 'PinyinIME.apk')), '缺少 PinyinIME.apk');
     assert(/ensureChineseIme/.test(adbJs), 'adb 需要 ensureChineseIme');
     assert(/com\.android\.inputmethod\.pinyin/.test(adbJs), '要用谷歌拼音输入法');
     assert(/ime enable/.test(adbJs) && /default_input_method/.test(adbJs), '要启用并设为默认');
     assert(/ensureChineseIme/.test(engJs), 'prepare() 里要真正调用安装');
-    assert(/_chineseReady/.test(engJs), '中文初始化要幂等（每次开机只做一次）');
-    assert(/chineseIme/.test(engJs), '要允许用户关掉');
+    assert(/locale === 'zh-CN'[\s\S]{0,400}ensureChineseIme/.test(engJs.replace(/\n/g, ' ')),
+      '拼音 IME 只应在中文 guest 时安装');
+    assert(/_guestLocaleReady/.test(engJs), '语言初始化要幂等（每次开机只做一次）');
+    assert(/chineseIme/.test(engJs), '要允许用户关掉 IME 自动配置');
 
-    // 联网验证端点：不能让 gstatic 把网络标成「!」
-    assert(/captive_portal_http_url/.test(adbJs), '要设置国内联网验证端点');
-    assert(/connect\.rom\.miui\.com/.test(adbJs), '端点要国内可达');
+    // 联网验证端点按网络档：默认 gstatic（安卓原生），中国档（fastDns）才用国内 204
+    assert(/captive_portal_http_url/.test(adbJs) || /captive_portal_http_url/.test(emuJs),
+      '要设置联网验证端点');
+    assert(/connectivitycheck\.gstatic\.com/.test(emuJs), '默认端点应是安卓原生的 gstatic');
+    assert(/connect\.rom\.miui\.com/.test(emuJs), '中国网络档要保留 miui 204 端点');
+    assert(/fastDns/.test(emuJs), '端点选择要跟 fastDns（中国网络档）挂钩');
 
     // 设置页要有开关
     assert(/setLocale/.test(html) && /setChineseIme/.test(html), '设置页要暴露语言/输入法开关');
@@ -1196,22 +1207,24 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
       'onCloseApp 也要清 currentAppPkg');
   });
 
-  await test('旧版本清理：能发现任意位置的 ApkStart 目录，且绝不碰当前运行版本', () => {
+  await test('旧版本清理：能发现任意位置的 zApkStart 目录，绝不碰当前运行版本，也绝不碰上游 ApkStart', () => {
     const os = require('os');
     const leftovers = require('../src/core/leftovers');
     const np = (p) => { try { return path.resolve(p).toLowerCase(); } catch (_) { return String(p).toLowerCase(); } };
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apkstart-left-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zapkstart-left-'));
     try {
-      // 造三个「旧版本」目录 + 一个「当前版本」目录，每个里面放一个假的 ApkStart.exe
-      const mk = (name) => {
+      // 造三个「旧版本」目录 + 一个「当前版本」目录，每个里面放一个假的 zApkStart.exe
+      const mk = (name, exe) => {
         const d = path.join(root, name);
         fs.mkdirSync(d, { recursive: true });
-        fs.writeFileSync(path.join(d, 'ApkStart.exe'), 'fake-exe');
+        fs.writeFileSync(path.join(d, exe || 'zApkStart.exe'), 'fake-exe');
         return d;
       };
-      const old1 = mk('ApkStart-v0.3.9-win64-portable');
-      const old2 = mk('ApkStart-win64-portable.prev-2026-01-01T00-00-00-000Z'); // 打包备份残留
-      const curDir = mk('ApkStart-v0.5.0-win64-portable');
+      const old1 = mk('zApkStart-v0.3.9-win64-portable');
+      const old2 = mk('zApkStart-win64-portable.prev-2026-01-01T00-00-00-000Z'); // 打包备份残留
+      const curDir = mk('zApkStart-v0.5.0-win64-portable');
+      // 上游 ApkStart 的安装目录是**另一个产品**：fork 的清理绝不能碰它
+      const upstream = mk('ApkStart-v0.6.4-win64-portable', 'ApkStart.exe');
 
       const r = leftovers.scan({ installDir: curDir, dataDir: root, avdHome: '' });
       const found = r.items.filter((i) => i.kind === 'dir').map((i) => np(i.path));
@@ -1221,6 +1234,7 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
       assert(found.includes(np(old2)), '.prev 打包备份残留没被发现');
       // 关键安全约束：当前正在运行的那个绝不能出现在待删列表里
       assert(!found.includes(np(curDir)), '当前运行版本被当成旧版本（危险）');
+      assert(!found.includes(np(upstream)), '上游 ApkStart 的安装目录绝不能被 fork 清理');
     } finally {
       try { fs.rmSync(root, { recursive: true, force: true }); } catch (_) { /* ignore */ }
     }
@@ -1272,7 +1286,8 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
 
     // 横屏只能靠物理面板 + 重启；启动时必须先校正，否则会躺倒
     assert(/panelLandscape/.test(emuJs), 'emulator 需要能读出当前面板方向');
-    assert(/orientation mismatch/.test(mainJs), '启动前要检查面板方向是否与设置一致');
+    // 文案已抽取进 i18n 目录（src/core/locales/zh-CN/main.js）：源码或目录里存在即可
+    assert(/orientation mismatch/.test(mainJs) || /orientation mismatch/.test(fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'main.js'), 'utf8')), '启动前要检查面板方向是否与设置一致');
     assert(/reloadApp:\s*false/.test(mainJs), '校正方向时不能顺手再启动一次应用（会重复拉起）');
 
     // 独立窗口模式下「全屏」要作用在模拟器窗口上，maximize 一个隐藏窗口没有意义
@@ -1594,51 +1609,77 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(s._rankCache.size === 0, 'reset 要清空测速缓存（换源/换网后必须重测）');
   });
 
-  await test('双源：Gitee 自动附带的源码包（v1.2.3.zip）绝不能被当成安装包', async () => {
+  await test('资产白名单：源码包（v0.3.2.zip/tar.gz）绝不能被当成安装包，只认 zApkStart 前缀', async () => {
     const { Sources } = require('../src/core/sources');
     const s2 = new Sources(() => ({ runtime: {} }));
     s2.fetchReleases = async () => [
       {
-        source: 'gitee',
-        name: 'Gitee',
-        web: 'e',
+        source: 'github',
+        name: 'GitHub',
+        web: 'g',
         rel: {
           tag_name: 'v0.3.2',
           assets: [
-            { name: 'v0.3.2.zip', size: 999, browser_download_url: 'ge://src' },
-            { name: 'v0.3.2.tar.gz', size: 999, browser_download_url: 'ge://src2' },
-            { name: 'ApkStart-v0.3.2-win64-portable.zip', size: 10, browser_download_url: 'ge://ok' },
+            { name: 'v0.3.2.zip', size: 999, browser_download_url: 'gh://src' },
+            { name: 'v0.3.2.tar.gz', size: 999, browser_download_url: 'gh://src2' },
+            { name: 'zApkStart-v0.3.2-win64-portable.zip', size: 10, browser_download_url: 'gh://ok' },
           ],
         },
       },
     ];
     const m = await s2.latest();
-    assert(m.assets.length === 1 && m.assets[0].url === 'ge://ok',
-      `只应保留 ApkStart* 资产，实际 ${JSON.stringify(m.assets.map((a) => a.name))}`);
+    assert(m.assets.length === 1 && m.assets[0].url === 'gh://ok',
+      `只应保留 zApkStart* 资产，实际 ${JSON.stringify(m.assets.map((a) => a.name))}`);
   });
 
-  await test('Gitee 的资产没有 size 字段：分片组仍要成立（否则整包被丢掉）', async () => {
+  await test('polite-fork 保证：上游 ApkStart 的 release 资产（即使版本更高）绝不能进入候选', async () => {
+    const { Sources } = require('../src/core/sources');
+    const brand = require('../src/core/brand');
+    // 语义约束（不是 mock）：唯一发布源必须指向 fork 仓库
+    assert(brand.OWNER_GH === 'zeevrussak', '发布源必须是 fork 仓库');
+    const s3 = new Sources(() => ({ runtime: {} }));
+    // 模拟「上游风格的 release 混进了候选」（无论哪条路径都不该被采纳）：
+    // 白名单只认 zApkStart 前缀 → 上游资产全部被丢弃，永远不可能被当成更新安装。
+    s3.fetchReleases = async () => [
+      {
+        source: 'github',
+        name: 'GitHub',
+        web: 'g',
+        rel: {
+          tag_name: 'v9.9.9',
+          assets: [
+            { name: 'ApkStart-v9.9.9-win64-portable.zip', size: 10, browser_download_url: 'up://a' },
+            { name: 'ApkStart-9.9.9-Setup.exe', size: 10, browser_download_url: 'up://b' },
+          ],
+        },
+      },
+    ];
+    const m = await s3.latest();
+    assert(m.assets.length === 0, `上游 ApkStart 资产必须全部被拒，实际 ${JSON.stringify(m.assets.map((a) => a.name))}`);
+  });
+
+  await test('无 size 的分片资产：分片组仍要成立（否则整包被丢掉）', async () => {
     const { Sources } = require('../src/core/sources');
     const s = new Sources(() => ({ runtime: {} }));
     s.fetchReleases = async () => [{
-      source: 'gitee',
-      name: 'Gitee',
-      web: 'e',
+      source: 'github',
+      name: 'GitHub',
+      web: 'g',
       rel: {
         tag_name: 'v0.3.3',
-        // Gitee 发行版资产只有 name + url，没有 size（实测）
+        // 镜像/异常源可能只有 name + url，没有 size
         assets: [
-          { name: 'ApkStart-v0.3.3-win64-portable.zip.part1', browser_download_url: 'ge://p1' },
-          { name: 'ApkStart-v0.3.3-win64-portable.zip.part2', browser_download_url: 'ge://p2' },
+          { name: 'zApkStart-v0.3.3-win64-portable.zip.part1', browser_download_url: 'gh://p1' },
+          { name: 'zApkStart-v0.3.3-win64-portable.zip.part2', browser_download_url: 'gh://p2' },
         ],
       },
     }];
     const m = await s.latest();
     assert(m.assets.length === 1, `应合并成 1 个资产，实际 ${m.assets.length}`);
     const a = m.assets[0];
-    assert(a.name === 'ApkStart-v0.3.3-win64-portable.zip', `资产名应为整包名，实际 ${a.name}`);
+    assert(a.name === 'zApkStart-v0.3.3-win64-portable.zip', `资产名应为整包名，实际 ${a.name}`);
     assert(a.parts && a.parts.length === 2, '必须保留两片');
-    assert(a.parts[0].urls[0] === 'ge://p1' && a.parts[1].urls[0] === 'ge://p2', '分片地址顺序/内容要对');
+    assert(a.parts[0].urls[0] === 'gh://p1' && a.parts[1].urls[0] === 'gh://p2', '分片地址顺序/内容要对');
     assert(a.size === 0, '大小未知时应为 0（界面按已收字节显示进度）');
   });
 
@@ -1665,16 +1706,18 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(info.canAutoApply === true, '有分片就应判定为可自动更新');
   });
 
-  await test('双源：合并版本时只认同版本的资产，不拿旧包冒充新包', async () => {
-    const { Sources } = require('../src/core/sources');
+  await test('单源：latest 只返回 fork 仓库的 release，不存在会竞速的第二源', async () => {
+    const { Sources, SOURCES } = require('../src/core/sources');
+    // 结构约束：不存在 gitee 源 —— 上游「双源竞速、版本号高者胜」会把上游构建
+    // 当成 fork 更新装进来（design.md §The Problem），fork 必须只有单一发布源。
+    assert(!('gitee' in SOURCES), '不得存在 gitee 源');
     const s = new Sources(() => ({ runtime: {} }));
     s.fetchReleases = async () => [
-      { source: 'github', name: 'GitHub', web: 'g', rel: { tag_name: 'v0.4.0', assets: [{ name: 'ApkStart-A-portable.zip', size: 10, browser_download_url: 'gh://a' }] } },
-      { source: 'gitee', name: 'Gitee', web: 'e', rel: { tag_name: 'v0.3.9', assets: [{ name: 'ApkStart-A-portable.zip', size: 10, browser_download_url: 'ge://a' }, { name: 'ApkStart-B.txt', size: 1, browser_download_url: 'ge://b' }] } },
+      { source: 'github', name: 'GitHub', web: 'g', rel: { tag_name: 'v0.4.0', assets: [{ name: 'zApkStart-A-portable.zip', size: 10, browser_download_url: 'gh://a' }] } },
     ];
     const m = await s.latest();
-    assert(m.version === '0.4.0', `应取更高版本，实际 ${m.version}`);
-    assert(m.assets.length === 1 && m.assets[0].url === 'gh://a', '旧版本同名资产不能覆盖新版本');
+    assert(m.version === '0.4.0', `应取版本 0.4.0，实际 ${m.version}`);
+    assert(m.assets.length === 1 && m.assets[0].url === 'gh://a', '资产应来自唯一 release');
   });
 
   await test('窗口代理：scope 用分号拼目录、滤空项（窗口归属判定的唯一输入）', async () => {
@@ -1692,23 +1735,20 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(sent[1].dirs === '' && empty.ok === true, '空范围也要能下发（代理收到后一个窗口都不动）');
   });
 
-  await test('双源：同名整包两边都有时，两个地址都要留着（否则 Gitee 永远轮不到）', async () => {
+  await test('候选地址：GitHub 直连在前、镜像前缀拼接在后，未知大小不冒充', async () => {
     const { Sources } = require('../src/core/sources');
-    const s = new Sources(() => ({ runtime: { autoMirror: false } }));
-    const gh = 'https://github.com/o/r/releases/download/v0.3.3/a.zip';
-    const ge = 'https://gitee.com/o/r/releases/download/v0.3.3/a.zip';
+    const s = new Sources(() => ({ runtime: { autoMirror: true } }));
+    const gh = 'https://github.com/zeevrussak/zApkStart/releases/download/v0.3.3/a.zip';
     s.fetchReleases = async () => [
-      { source: 'github', name: 'GitHub', web: 'g', rel: { tag_name: 'v0.3.3', assets: [{ name: 'ApkStart-v0.3.3-win64-portable.zip', size: 108200693, browser_download_url: gh }] } },
-      // Gitee 的资产没有 size（实测），不能拿 GitHub 的大小冒充它
-      { source: 'gitee', name: 'Gitee', web: 'e', rel: { tag_name: 'v0.3.3', assets: [{ name: 'ApkStart-v0.3.3-win64-portable.zip', browser_download_url: ge }] } },
+      { source: 'github', name: 'GitHub', web: 'g', rel: { tag_name: 'v0.3.3', assets: [{ name: 'zApkStart-v0.3.3-win64-portable.zip', size: 108200693, browser_download_url: gh }] } },
     ];
     const m = await s.latest();
-    assert(m.assets.length === 1, `同名资产要合并成 1 个，实际 ${m.assets.length}`);
+    assert(m.assets.length === 1, `应保留 1 个资产，实际 ${m.assets.length}`);
     const a = m.assets[0];
-    assert(a.urls.length === 2 && a.urls[1] === ge, `两个源的地址都要留着，实际 ${JSON.stringify(a.urls)}`);
-    assert(a.sizes[gh] === 108200693 && !a.sizes[ge], '大小按地址分开记，未知就是未知');
     const cands = s.candidates(a);
-    assert(cands.length === 2 && cands[0] === gh, `候选地址应含两个源，实际 ${JSON.stringify(cands)}`);
+    assert(cands[0] === gh, `直连地址应排第一，实际 ${cands[0]}`);
+    assert(cands.length >= 2, '镜像前缀候选也要在场（直连慢时才有得换）');
+    assert(a.sizes[gh] === 108200693, '大小按地址记录');
   });
 
   await test('多源并行下载：两个源体积不同时，跟最快的源走（不能固定挑体积大的）', async () => {
@@ -2427,7 +2467,9 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
       '要能预判「这次会重启」');
     assert(/if \(this\.detachedMode && !this\._showWhileWaiting\) return;/.test(appwin),
       'ready-to-show 只在 showWhileWaiting 时才显示壳窗口');
-    assert(/正在为《[\s\S]{0,40}切换到/.test(mainJs), '提示文案要说清为什么慢');
+    // 文案已抽取进 i18n 目录：源码或 zh-CN 目录里存在即可
+    const mainZh = fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'main.js'), 'utf8');
+    assert(/正在为《[\s\S]{0,40}切换到/.test(mainJs) || /正在为《[\s\S]{0,40}切换到/.test(mainZh), '提示文案要说清为什么慢');
     // 真正开始换向重启时，pre-attach 可能已经把壳窗口收起来了 —— 必须再亮一次，
     // 否则重启那 40 秒桌面全空（用户以为程序退出了）。
     assert(/appWin\.showWaiting\(/.test(mainJs), '重启换向前要重新亮出等待窗口');
@@ -2449,7 +2491,9 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
 
   await test('网络体检不能一次不过就叫人重置数据', () => {
     const root = path.join(__dirname, '..');
-    const emuJs = fs.readFileSync(path.join(root, 'src', 'core', 'emulator.js'), 'utf8');
+    // 开机提示文案已抽取进 i18n 目录（契约见 src/core/i18n.js）：源码与 zh-CN 目录一起查
+    const emuJs = fs.readFileSync(path.join(root, 'src', 'core', 'emulator.js'), 'utf8')
+      + fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'emulator.js'), 'utf8');
     // Wi-Fi 关联比 sys.boot_completed 晚 5~20 秒，查一次就报「没有网络」等于每次
     // 冷启动都误报；而以前的补救建议是「重置安卓数据」（会删掉已装应用）。
     assert(/checkNetwork\('', \{ waitMs: \d+, interval: \d+ \}\)/.test(emuJs),
@@ -2523,7 +2567,7 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(/let launchInFlight = null;/.test(mainJs), '要有进行中启动的记录');
     assert(/if \(launchInFlight\.pkg === pkg\)[\s\S]{0,120}return launchInFlight\.promise;/.test(mainJs),
       '同一个应用连点要复用进行中的那次');
-    assert(/launch queued \$\{pkg\}/.test(mainJs), '换应用要排队而不是把运行时抽走');
+    assert(/launch queued ${pkg}/.test(mainJs) || /launch queued {pkg}/.test(fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'main.js'), 'utf8')), '换应用要排队而不是把运行时抽走');
     assert(/async function launchOne\(pkg\)/.test(mainJs), '原主体要拆成 launchOne');
     assert(/launchInFlight = entry;/.test(mainJs), '要在 finally 里清空，避免卡死后续启动');
   });
@@ -2546,7 +2590,8 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     // 3) 商店（MSIX）版：拿不到提权就退回「手动引导」，而不是弹一个注定失败的 UAC
     assert(/if \(store\.STORE_BUILD\) \{[\s\S]{0,900}manual: true/.test(handlerBody),
       '商店版失败时要返回 manual 交给 UI 引导');
-    assert(/商店版无法自行提权/.test(mainJs), '商店版文案要说明为什么不能自动开');
+    // 文案已抽取进 i18n 目录：源码或 zh-CN 目录里存在即可
+    assert(/商店版无法自行提权/.test(mainJs) || /商店版无法自行提权/.test(fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'main.js'), 'utf8')), '商店版文案要说明为什么不能自动开');
     assert(/虚拟机监控程序平台/.test(mainJs), '要明确写出「Windows 虚拟机监控程序平台」');
     // 4) 开启成功后必须清掉加速缓存，否则界面还显示旧结论
     assert(/const whpx = await enableWhpxFeatures\(\);\s*\n\s*runtime\.provisioner\.invalidateEnvCache/.test(mainJs),
@@ -2560,7 +2605,7 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(/openWindowsFeatures: \(\) => invoke\('provision:openWindowsFeatures'\)/.test(preloadJs),
       'preload 要暴露 openWindowsFeatures');
     // 8) 软件模拟下第一次启动要弹一次系统通知（设置里的自检项用户很可能没看到）
-    assert(/let accelWarned = false;/.test(mainJs) && /正在以软件模拟运行/.test(mainJs),
+    assert(/let accelWarned = false;/.test(mainJs) && (/正在以软件模拟运行/.test(mainJs) || /正在以软件模拟运行/.test(fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'main.js'), 'utf8'))),
       '软件模拟要提醒一次');
   });
 
@@ -2576,7 +2621,7 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(/--set-icon/.test(packJs), '要写图标');
     assert(/--set-file-version/.test(packJs), '要写文件版本');
     assert(/--set-version-string', 'FileDescription'/.test(packJs), '要写 FileDescription');
-    assert(/--set-version-string', 'ProductName', 'ApkStart'/.test(packJs), 'ProductName 必须是 ApkStart');
+    assert(/--set-version-string', 'ProductName', brand\.PRODUCT/.test(packJs), 'ProductName 必须来自 brand.PRODUCT');
     assert(/embedExeMeta\(exePath\)/.test(packJs), '要在改名之后真的调用');
     // 找不到 rcedit 时要明确告警，不能静默产出「Electron 图标」的包
     assert(/找不到 rcedit\.exe/.test(packJs), '缺 rcedit 要告警');
@@ -2585,25 +2630,22 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(/setAumid\(APP_AUMID\);/.test(mainJs), '启动时要设置 AppUserModelID');
 
     // 完整版（含运行时）作为一个可交付版本
-    assert(/--full/.test(packJs) && /ApkStart-v\$\{PKG\.version\}-win64-full/.test(packJs),
+    assert(/--full/.test(packJs) && /\$\{brand\.PRODUCT\}-v\$\{PKG\.version\}-win64-full/.test(packJs),
       '--full 要产出带版本号的完整版目录');
     assert(/build', 'runtime'/.test(packJs), '完整版要内置 build/runtime');
   });
 
-  await test('版本统一：package.json / MSIX 四段号 / 文档包名一致', () => {
+  await test('版本统一：package.json（semver prerelease）/ 四段号一致 / 打包脚本同源', () => {
     const root = path.join(__dirname, '..');
     const pkg = require(path.join(root, 'package.json'));
     const { msixVersion } = require(path.join(root, 'build', 'msix.js'));
+    // fork 版本形如 0.6.4-zk.1：semver prerelease，数值提取后必须回到上游基座 0.6.4.0
+    assert(/^\d+\.\d+\.\d+-zk\.\d+$/.test(pkg.version), `fork 版本应为 <上游>-zk.<n>：${pkg.version}`);
     const four = msixVersion(pkg.version);
-    assert(/^\d+\.\d+\.\d+\.0$/.test(four), `MSIX 四段版本号格式不对：${four}`);
-    const artifact = `ApkStart_${four}_x64.msix`;
-    for (const f of ['docs/store-listing.md', 'docs/store-msix.md', 'docs/store-upload-walkthrough.md']) {
-      const t = fs.readFileSync(path.join(root, f), 'utf8');
-      assert(t.includes(artifact), `${f} 里应引用当前版本的包名 ${artifact}`);
-    }
+    assert(four === '0.6.4.0', `MSIX 四段版本号应是上游基座 0.6.4.0，实际 ${four}`);
     // exe 的文件版本也要用同一个号（四段），别和 package.json 各说各话
     const packJs = fs.readFileSync(path.join(root, 'build', 'pack.js'), 'utf8');
-    assert(/\$\{PKG\.version\}\.0/.test(packJs), 'exe 文件版本要跟 package.json 对齐');
+    assert(/msixVersion\(PKG\.version\)/.test(packJs), 'exe 文件版本要走 msixVersion 的数值口径');
     // 商店包和 exe 用的是同一个版本来源，不该有第二份硬编码版本号
     const msixJs = fs.readFileSync(path.join(root, 'build', 'msix.js'), 'utf8');
     assert(/const VERSION = String\(pkg\.version/.test(msixJs), 'MSIX 版本号必须取自 package.json');
@@ -2621,14 +2663,14 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(/iconIcoPath: ico/.test(installerJs), 'writeShortcut 要拿到应用图标');
     assert(!/iconIcoPath:\s*(APPICON|appicon|brandIcon)/.test(installerJs), '不能用 ApkStart 的品牌图标');
     // 每个应用一个 AUMID：任务栏按应用分组，固定项才认得出是哪个应用
-    assert(/appUserModelId: `RoutineMiku\.ApkStart\.\$\{app\.package\}`/.test(installerJs),
+    assert(/appUserModelId: `\$\{brand\.AUMID_PREFIX\}\.\$\{app\.package\}`/.test(installerJs),
       '每个应用要有自己的 AUMID');
     // Windows 只在「进程 AUMID == 快捷方式 AUMID」时沿用快捷方式图标，
     // 所以打开某个应用时要把进程身份切过去，回管理窗口再切回 ApkStart。
-    assert(/const APP_AUMID = 'RoutineMiku\.ApkStart';/.test(mainJs), '要有统一的 AUMID 前缀');
+    assert(/const APP_AUMID = brand\.AUMID_PREFIX;/.test(mainJs), '要有统一的 AUMID 前缀（brand）');
     assert(/setAumid\(`\$\{APP_AUMID\}\.\$\{pkg\}`\)/.test(mainJs), '开应用窗口前要切到该应用的 AUMID');
     assert(/function showWindow\(\) \{\s*\n\s*\/\/[^\n]*\n\s*setAumid\(APP_AUMID\);/.test(mainJs),
-      '回管理窗口要切回 ApkStart 的 AUMID');
+      '回管理窗口要切回 zApkStart 的 AUMID');
     // writeShortcut 必须把 iconIndex 设成 0（ico 里第 0 帧），否则某些尺寸会取错
     assert(/icon: opt\.iconIcoPath \|\| opt\.target/.test(shortcutJs), '图标路径要能回退到 target');
     assert(/iconIndex: 0/.test(shortcutJs), 'iconIndex 要是 0');
@@ -2698,11 +2740,13 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
       '迁移条件不能依赖 windowEmbedMigrated2，否则旧标记会漏迁');
     // 原生窗口要尽早接出来，别让用户对着美化等待页干等
     const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
-    assert(/pre-attach detached ok/.test(mainJs), '启动时要先尝试把模拟器原生窗口接出来');
+    // 文案已抽取进 i18n 目录：源码或 zh-CN 目录里存在即可
+    assert(/pre-attach detached ok/.test(mainJs) || /pre-attach detached ok/.test(fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'main.js'), 'utf8')), '启动时要先尝试把模拟器原生窗口接出来');
     // 接管失败必须重试，否则壳窗口一直停在屏幕上（用户看到的「美化窗口」）
     const attachBody = mainJs.slice(mainJs.indexOf('async function attachAppWindow'), mainJs.indexOf('async function attachAppWindow') + 2200);
     assert(/for \(let i = 0; i < 4; i \+= 1\)/.test(attachBody), '原生窗口接管要重试');
-    assert(/临时退回嵌入模式/.test(attachBody), '四轮都失败要兜底，不能留黑屏');
+    const mainZh = fs.readFileSync(path.join(root, 'src', 'core', 'locales', 'zh-CN', 'main.js'), 'utf8');
+    assert(/临时退回嵌入模式/.test(attachBody) || /临时退回嵌入模式/.test(mainZh), '四轮都失败要兜底，不能留黑屏');
     const appJs = fs.readFileSync(path.join(root, 'src', 'ui', 'app.js'), 'utf8');
     assert(/windowEmbedChosen:\s*true/.test(appJs), '设置页切换时要写入「已主动选择」标记');
     const indexHtml = fs.readFileSync(path.join(root, 'src', 'ui', 'index.html'), 'utf8');

@@ -1,40 +1,33 @@
 'use strict';
 /**
- * 双源（GitHub / Gitee）+ 镜像前缀的统一下载来源管理。
+ * 下载来源管理（GitHub + 可选镜像前缀）。
  *
- * 国内直连 GitHub 有两个坑：
- *   1. api.github.com 经常几十秒才响应，甚至直接超时 —— 表现是「检查更新转圈」；
- *   2. 资产下载（objects.githubusercontent.com）单连接限速，常在 100KB/s 上下 ——
- *      1.5 GB 的运行时包要下 4 个小时。
+ * 上游是「GitHub / Gitee 双源并发、取版本号更高的一方」；zApkStart 作为 fork
+ * **必须只认自己的发布源** —— 双源竞速会让上游（RoutineMiku）更高的版本号赢下
+ * 「检查更新」，把中文版 ApkStart 当成 zApkStart 的更新装进来。所以 Gitee 整条
+ * 链路随 fork 移除，GitHub 源固定指向 fork 自己的仓库（见 brand.js）。
  *
- * 所以这里不预设「谁是主源」，而是每次用真实字节测速：
- *   - 版本信息：GitHub / Gitee 两边**并发**问，谁先给出更高版本用谁的；
- *   - 下载地址：把「GitHub 直连 / Gitee 同名资产 / 镜像前缀拼接」全部列出来，
- *     每个地址真下 128KB，按实测速度排序，取最快的那个。
- *
- * 测速结果在内存里缓存 30 分钟（同一进程内反复检查更新/下多个组件不必重复测）。
+ * 镜像测速逻辑保持不变：
+ *   - 下载地址 = 「GitHub 直连 / 镜像前缀拼接」全部列出来，每个地址真下 256KB，
+ *     按实测速度排序，取最快的那个。
+ *   - 测速结果在内存里缓存 30 分钟。
  */
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 const { cmpVer } = require('./version');
+const brand = require('./brand');
+const { t } = require('./i18n');
 
-const OWNER_GH = 'RoutineMiku';
-const OWNER_GITEE = 'daily-miku';
-const REPO = 'apkstart';
+const OWNER_GH = brand.OWNER_GH;
+const REPO = brand.REPO;
 
 const SOURCES = {
   github: {
     id: 'github',
     name: 'GitHub',
-    api: `https://api.github.com/repos/${OWNER_GH}/${REPO}`,
-    web: `https://github.com/${OWNER_GH}/${REPO}`,
-  },
-  gitee: {
-    id: 'gitee',
-    name: 'Gitee',
-    api: `https://gitee.com/api/v5/repos/${OWNER_GITEE}/${REPO}`,
-    web: `https://gitee.com/${OWNER_GITEE}/${REPO}`,
+    api: brand.RELEASE_API,
+    web: brand.RELEASE_WEB,
   },
 };
 
@@ -53,15 +46,15 @@ const SAMPLE_BYTES = 256 * 1024;
 
 function openUrl(url, { timeout = 10000, headers = {}, redirects = 0, followRedirect = true } = {}) {
   return new Promise((resolve, reject) => {
-    if (redirects > 6) return reject(new Error('重定向次数过多'));
+    if (redirects > 6) return reject(new Error(t('sources.too_many_redirects')));
     let u;
-    try { u = new URL(url); } catch (_) { return reject(new Error('地址无效')); }
+    try { u = new URL(url); } catch (_) { return reject(new Error(t('sources.invalid_url'))); }
     const mod = u.protocol === 'http:' ? http : https;
     const req = mod.request(url, {
       method: 'GET',
       timeout,
       headers: {
-        'User-Agent': 'ApkStart/0.3 (Windows)',
+        'User-Agent': brand.USER_AGENT,
         'Accept-Encoding': 'identity',
         ...headers,
       },
@@ -74,7 +67,7 @@ function openUrl(url, { timeout = 10000, headers = {}, redirects = 0, followRedi
       }
       resolve(res);
     });
-    req.on('timeout', () => req.destroy(new Error('连接超时')));
+    req.on('timeout', () => req.destroy(new Error(t('sources.connect_timeout'))));
     req.on('error', reject);
     req.end();
   });
@@ -230,20 +223,19 @@ class Sources {
   blockedReason(id) {
     const until = this._blocked.get(id) || 0;
     if (until <= Date.now()) return null;
-    return `暂时跳过（${Math.ceil((until - Date.now()) / 60000)} 分钟内不再尝试）`;
+    return t('sources.blocked_temporarily', { minutes: Math.ceil((until - Date.now()) / 60000) });
   }
 
   /** 各源的最新 release（并发，任何一个失败都不影响另一个） */
   /**
    * 不依赖 API 的兜底：直接跟随 `/releases/latest` 的 302 拿到 tag。
    *
-   * 为什么必须有这一条：GitHub 的匿名 API 每个 IP 每小时只有 60 次，
-   * Gitee 的匿名 API 更紧（实测连点几次就 403 Rate Limit Exceeded）。
+   * 为什么必须有这一条：GitHub 的匿名 API 每个 IP 每小时只有 60 次。
    * 公司/校园网、运营商 NAT 出口下，用户很容易「检查更新失败」——
    * 而 `releases/latest` 这个网页跳转是走 CDN 的，不消耗 API 额度。
    *
    * 拿到 tag 之后资产名可以按发布约定拼出来：
-   *   ApkStart-<tag>-win64-portable.zip / ApkStart-<version>-Setup.exe / ApkStart-runtime-<tag>.zip
+   *   zApkStart-<tag>-win64-portable.zip / zApkStart-<version>-Setup.exe / zApkStart-runtime-<tag>.zip
    */
   async _releaseTagViaRedirect(id) {
     const s = SOURCES[id];
@@ -260,9 +252,9 @@ class Sources {
     const s = SOURCES[id];
     const ver = String(tag).replace(/^v/i, '');
     const names = [
-      `ApkStart-${tag}-win64-portable.zip`,
-      `ApkStart-${ver}-Setup.exe`,
-      `ApkStart-runtime-${tag}.zip`,
+      `${brand.ASSET_PREFIX}${tag}-win64-portable.zip`,
+      `${brand.ASSET_PREFIX}${ver}-Setup.exe`,
+      `${brand.ASSET_PREFIX}runtime-${tag}.zip`,
     ];
     // GitHub 和 Gitee 都支持 /releases/download/<tag>/<文件名> 这种规范地址
     // （实测 Gitee 会 302 到 foruda.gitee.com 的附件地址，能正常下到完整字节），
@@ -285,27 +277,21 @@ class Sources {
   }
 
   async fetchReleases() {
-    const prefs = String((this.settings().runtime || {}).sourcePreference || 'auto');
-    const ids = prefs === 'github' || prefs === 'gitee' ? [prefs] : ['github', 'gitee'];
-    // 公开仓库的 releases 接口匿名就能读；仓库若是私有的，Gitee 会回 404
-    // "Not Found Project"（而不是 401），那种情况才需要在这里填一个只读 token。
-    // 另外匿名调用有频率限制，感兴趣的用户可以填 token 提高额度。
-    const token = String((this.settings().runtime || {}).giteeToken || '').trim();
-    const withToken = (id, url) => (id === 'gitee' && token
-      ? `${url}${url.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(token)}`
-      : url);
+    // zApkStart：发布源只有 fork 自己的 GitHub 仓库（见文件头注释）。镜像前缀
+    // 仍然可用 —— 它们只转发 GitHub 的公开文件，不改变「谁是发布者」。
+    const ids = ['github'];
 
     const jobs = ids.map(async (id) => {
       const s = SOURCES[id];
       const skip = this.blockedReason(id);
       if (skip) return { source: id, name: s.name, web: s.web, error: skip };
       try {
-        const rel = await getJson(withToken(id, `${s.api}/releases/latest`), 9000);
+        const rel = await getJson(`${s.api}/releases/latest`, 9000);
         return { source: id, name: s.name, web: s.web, rel };
       } catch (e) {
-        // Gitee 没有正式 release、或 GitHub 被墙，都退回列表取第一条
+        // GitHub 被墙/限流时退回列表取第一条
         try {
-          const list = await getJson(withToken(id, `${s.api}/releases?per_page=10`), 9000);
+          const list = await getJson(`${s.api}/releases?per_page=10`, 9000);
           const first = (Array.isArray(list) ? list : []).find((r) => r && !r.draft);
           if (first) return { source: id, name: s.name, web: s.web, rel: first };
         } catch (_) { /* 继续尝试不依赖 API 的兜底 */ }
@@ -318,9 +304,7 @@ class Sources {
         } catch (_) { /* 兜底也不行 */ }
         const limited = /\b(403|429)\b/.test(e.message);
         if (limited) this._blocked.set(id, Date.now() + this._blockMs);
-        const hint = limited
-          ? '（被限流，已暂停使用该源一段时间）'
-          : (id === 'gitee' && !token ? '（可稍后重试，或在设置里填只读 token 提高额度）' : '');
+        const hint = limited ? t('sources.rate_limited_hint') : '';
         return { source: id, name: s.name, web: s.web, error: `${e.message}${hint}` };
       }
     });
@@ -332,7 +316,7 @@ class Sources {
    * 这样即使 Gitee 只放了元数据、资产在 GitHub，也能两条路都试。
    */
   async latest({ force = false } = {}) {
-    const pref = String((this.settings().runtime || {}).sourcePreference || 'auto');
+    const pref = 'github';
     const cached = this._relCache;
     if (!force && cached.value && cached.key === pref && Date.now() - cached.at < this._relTtl) {
       return cached.value;
@@ -347,18 +331,18 @@ class Sources {
     }
     const ok = all.filter((x) => x && x.rel);
     if (!ok.length) {
-      const why = all.map((x) => `${x.name || x.source}: ${x.error || '无数据'}`).join('；');
+      const why = all.map((x) => `${x.name || x.source}: ${x.error || t('sources.no_data')}`).join('；');
       // 全挂了但手里有上一次的结果：宁可给一份「可能是旧的」版本信息，
       // 也不要让界面直接报错 —— 用户至少还能看到当前版本和发布页入口。
       if (cached.value) return { ...cached.value, stale: true, staleReason: why };
-      throw new Error(`连不上更新服务器（${why}）`);
+      throw new Error(t('sources.update_server_unreachable', { reason: why }));
     }
     ok.sort((a, b) => cmpVer(b.rel.tag_name || b.rel.name, a.rel.tag_name || a.rel.name));
     const top = ok[0];
     const tag = String(top.rel.tag_name || top.rel.name || '');
     const version = tag.replace(/^v/i, '');
 
-    // 只有同版本的资产才算数（不同源的旧版本资产不能拿来装）。
+    // 只有同版本的资产才算数。
     // 同名整包 + 分片组同时存在时优先用整包：分片要拼装，多一个失败点。
     let raw = [];
     for (const item of ok) {
@@ -367,10 +351,11 @@ class Sources {
       for (const a of (item.rel.assets || [])) {
         const key = String(a.name || '');
         if (!key) continue;
-        // Gitee 会把「源码包」自动挂成资产（v0.3.2.zip / v0.3.2.tar.gz），
+        // GitHub 会把「源码包」自动挂成资产（v0.3.2.zip / v0.3.2.tar.gz），
         // 这些不是安装包，`\.zip$` 的匹配规则会把它当成更新包下载下来 —— 必须排除。
-        // 我们自己的发布资产统一以 ApkStart 开头，按这个前缀白名单更安全。
-        if (!/^ApkStart/i.test(key)) continue;
+        // 我们自己的发布资产统一以 zApkStart 开头，按这个前缀白名单更安全
+        // （也让 fork 永远不可能把上游 ApkStart 的资产当成更新装进来）。
+        if (!brand.ASSET_WHITELIST_REGEX.test(key)) continue;
         raw.push({
           name: key,
           size: Number(a.size) || 0,
@@ -463,7 +448,7 @@ class Sources {
       if (!c || now - c.at > this._rankTtl) need.push(u);
     }
     if (need.length) {
-      onProgress?.({ stage: 'probe', message: `正在测速 ${need.length} 个下载源…` });
+      onProgress?.({ stage: 'probe', message: t('sources.probing_sources', { count: need.length }) });
       // 顺序测而不是并发测：并发会互相抢带宽，测出来的名次变成「谁抢得凶」，
       // 而不是「谁真的快」。每个源 256KB，正常也就一秒左右。
       // 单个源最多等 6 秒就放弃（旧版 9 秒 × 4 个源 = 最长 36 秒没有任何字节进度，
@@ -473,7 +458,10 @@ class Sources {
         i += 1;
         let host = u;
         try { host = new URL(u).host; } catch (_) { /* 地址不合法就原样显示 */ }
-        onProgress?.({ stage: 'probe', message: `正在测速第 ${i}/${need.length} 个源：${host}…` });
+        onProgress?.({
+          stage: 'probe',
+          message: t('sources.probing_source_n', { index: i, total: need.length, host }),
+        });
         // eslint-disable-next-line no-await-in-loop
         const r = await measure(u, { timeoutMs: 6000 });
         this._rankCache.set(u, { at: Date.now(), ok: r.ok, speed: r.speed });
@@ -489,7 +477,7 @@ class Sources {
     if (s > 0) {
       onProgress?.({
         stage: 'probe',
-        message: `已选最快的源：${new URL(best).host}（约 ${(s / 1048576).toFixed(2)} MB/s）`,
+        message: t('sources.fastest_source', { host: new URL(best).host, speed: (s / 1048576).toFixed(2) }),
       });
     }
     return sorted;

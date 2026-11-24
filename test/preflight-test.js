@@ -13,6 +13,8 @@ const path = require('path');
 
 const preflight = require('../src/core/preflight');
 const drivers = require('../src/core/drivers');
+// 体检文案断言（如「一键开启」「Windows 功能」）钉住中文（i18n 默认 auto 会跟随本机语言，见 drivers-test 同款做法）
+require('../src/core/i18n').setActiveT('zh-CN', '');
 
 let passed = 0;
 let failed = 0;

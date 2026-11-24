@@ -36,7 +36,7 @@ function call(params) {
       return;
     }
     const json = path.join(os.tmpdir(),
-      `apkstart-wctl-${crypto.randomBytes(4).toString('hex')}.json`);
+      `zapkstart-wctl-${crypto.randomBytes(4).toString('hex')}.json`);
     try {
       fs.writeFileSync(json, JSON.stringify(params), 'utf8');
     } catch (_) { resolve(null); return; }

@@ -43,17 +43,18 @@ function msixVersion(v) {
   return `${p[0]}.${p[1]}.${p[2]}.0`;
 }
 
-// Partner Center → Product management → Product identity 里确认过的两个值。
-// 直接写成默认值：以前默认是占位 `CN=RoutineMiku`，任何人随手跑一次
-// `node build/msix.js` 就会把已经正确的包覆盖成一个商店必然拒收的包。
-const PLACEHOLDER_PUBLISHER = 'CN=RoutineMiku';
-const CONFIRMED_IDENTITY = 'RoutineMiku.ApkStart';
-const CONFIRMED_PUBLISHER = 'CN=58CA1DED-8AB3-4D0D-AF50-62C9B781AA4D';
+// fork 没有商店上架记录：上游的 Partner Center 身份（RoutineMiku 的 GUID）随 fork
+// 一并移除，绝不复用。下面两个默认值只用于本地自签测试包；真要上架商店，
+// 维护者必须换成自己 Partner Center 的身份（用 APKSTART_MSIX_IDENTITY /
+// APKSTART_MSIX_PUBLISHER 环境变量覆盖）。
+const PLACEHOLDER_PUBLISHER = 'CN=zApkStart';
+const CONFIRMED_IDENTITY = 'zApkStart.App';
+const CONFIRMED_PUBLISHER = 'CN=zApkStart';
 const IDENTITY = arg('identity') || process.env.APKSTART_MSIX_IDENTITY || CONFIRMED_IDENTITY;
 const PUBLISHER = arg('publisher') || process.env.APKSTART_MSIX_PUBLISHER || CONFIRMED_PUBLISHER;
-const PUBLISHER_DISPLAY = arg('publisherDisplay') || process.env.APKSTART_MSIX_PUBLISHER_DISPLAY || 'RoutineMiku';
-const DISPLAY = arg('display') || process.env.APKSTART_MSIX_DISPLAY || 'ApkStart';
-const APP_ID = arg('appId') || 'ApkStart';
+const PUBLISHER_DISPLAY = arg('publisherDisplay') || process.env.APKSTART_MSIX_PUBLISHER_DISPLAY || 'zApkStart';
+const DISPLAY = arg('display') || process.env.APKSTART_MSIX_DISPLAY || 'zApkStart';
+const APP_ID = arg('appId') || 'zApkStart';
 const DO_SIGN = !!arg('sign', false);
 
 const STAGE = path.resolve(String(arg('stage')
@@ -61,10 +62,10 @@ const STAGE = path.resolve(String(arg('stage')
 const OUT_DIR = path.resolve(String(arg('out') || path.join(ROOT, 'dist', 'store')));
 
 /**
- * 选「载荷目录」：就是 MSIX 里 `app\` 下面那份 ApkStart.exe + resources。
+ * 选「载荷目录」：就是 MSIX 里 `app\` 下面那份 zApkStart.exe + resources。
  *
  * 两条来源，优先离线那条：
- *   A. dist/ApkStart-win64-portable —— `node build/pack.js` 的产物，**不需要联网**。
+ *   A. dist/zApkStart-win64-portable —— `node build/pack.js` 的产物，**不需要联网**。
  *      它只有壳，不带运行时，所以这里额外把 build/runtime 复制进
  *      resources/runtime（就是 electron-builder 的 extraResources 干的事）。
  *   B. dist/release/win-unpacked —— `electron-builder --win dir` 的产物，自带
@@ -76,9 +77,9 @@ const OUT_DIR = path.resolve(String(arg('out') || path.join(ROOT, 'dist', 'store
 function resolvePayload() {
   const explicit = arg('payload');
   if (explicit) return { dir: path.resolve(String(explicit)), addRuntime: false };
-  const portable = path.join(ROOT, 'dist', 'ApkStart-win64-portable');
+  const portable = path.join(ROOT, 'dist', 'zApkStart-win64-portable');
   const runtime = path.join(ROOT, 'build', 'runtime');
-  if (fs.existsSync(path.join(portable, 'ApkStart.exe'))) {
+  if (fs.existsSync(path.join(portable, 'zApkStart.exe'))) {
     const hasRuntime = fs.existsSync(path.join(portable, 'resources', 'runtime', 'emulator', 'emulator.exe'));
     return { dir: portable, addRuntime: !hasRuntime && fs.existsSync(runtime), runtime };
   }
@@ -187,7 +188,7 @@ function writeAssets(dir) {
 function manifest() {
   return `<?xml version="1.0" encoding="utf-8"?>
 <!--
-  ApkStart · Microsoft Store (MSIX) 清单
+  zApkStart · Microsoft Store (MSIX) 清单
   由 build/msix.js 生成，不要手改；改模板请改 build/msix.js。
 
   两个必须和 Partner Center 逐字一致的字段：
@@ -230,13 +231,13 @@ function manifest() {
       刻意不声明 unvirtualizedResources / broadFileSystemAccess：
       前者只给微软及其合作方发行的 PC 游戏，Store 基本不批；后者是给
       AppContainer 应用突破沙箱用的，full-trust 应用本来就是用户身份。
-      为了避开 AppData 写重定向，我们把数据目录放到了 %USERPROFILE%\\ApkStart，
+      为了避开 AppData 写重定向，我们把数据目录放到了 %USERPROFILE%\\zApkStart，
       完全不进虚拟化范围（见 src/core/store.js 的 STORE_BUILD）。
     -->
   </Capabilities>
 
   <Applications>
-    <Application Id="${APP_ID}" Executable="app\\ApkStart.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="${APP_ID}" Executable="app\\zApkStart.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="${DISPLAY}"
         Description="${pkg.description || DISPLAY}"
@@ -339,8 +340,8 @@ const { assertStandalone } = require('./guard-standalone');
 function stagePackage() {
   const pick = resolvePayload();
   const appSrc = pick.dir;
-  if (!fs.existsSync(path.join(appSrc, 'ApkStart.exe'))) {
-    console.error(`\n找不到 ${path.join(appSrc, 'ApkStart.exe')}。`);
+  if (!fs.existsSync(path.join(appSrc, 'zApkStart.exe'))) {
+    console.error(`\n找不到 ${path.join(appSrc, 'zApkStart.exe')}。`);
     console.error('两条路：');
     console.error('  A) node build/pack.js          （离线，推荐；本脚本会自动把 build/runtime 塞进去）');
     console.error('  B) npx electron-builder --win dir --x64 --config electron-builder.yml');
@@ -380,14 +381,14 @@ function stagePackage() {
 }
 
 function main() {
-  console.log(`ApkStart MSIX 打包  版本 ${VERSION} → ${msixVersion(VERSION)}`);
-  // 身份守卫：占位 Publisher 打出来的包商店一定拒收（0x800B0109 / 身份不匹配）。
-  // 光靠文档提醒没用 —— 默认值曾经就是占位值，一次随手重建就把好包覆盖掉了。
-  if (!String(PUBLISHER).toUpperCase().includes('58CA1DED') && !process.argv.includes('--allow-placeholder')) {
-    console.error(`\nPublisher 不是 Partner Center 确认过的值：${PUBLISHER}`);
-    console.error(`已确认值是 ${CONFIRMED_PUBLISHER}（Identity ${CONFIRMED_IDENTITY}）。`);
-    console.error('占位 Publisher 打出来的包上传时会被商店直接拒收。');
-    console.error('确实要打占位版（仅本地试验，不上架）就加 --allow-placeholder。\n');
+  console.log(`zApkStart MSIX 打包  版本 ${VERSION} → ${msixVersion(VERSION)}`);
+  // 身份守卫：zApkStart fork 没有商店身份。默认（占位）Publisher 只能打本地测试包；
+  // 上架用的真实身份必须经 APKSTART_MSIX_PUBLISHER 显式提供，否则一律要求
+  // --allow-placeholder 才继续 —— 宁可构建红一次，也别把上游身份或占位身份当真包发出去。
+  if (String(PUBLISHER).toUpperCase() === 'CN=ZAPKSTART' && !process.argv.includes('--allow-placeholder')) {
+    console.error(`\nPublisher 仍是 fork 占位值：${PUBLISHER}`);
+    console.error('上架商店需要先在 Partner Center 注册身份，再用 APKSTART_MSIX_IDENTITY / APKSTART_MSIX_PUBLISHER 提供。');
+    console.error('本地自签测试包请加 --allow-placeholder。\n');
     process.exit(3);
   }
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -445,7 +446,7 @@ function main() {
 }
 
 function artifactName() {
-  return `ApkStart_${msixVersion(VERSION)}_x64.msix`;
+  return `zApkStart_${msixVersion(VERSION)}_x64.msix`;
 }
 
 function sign(file) {
@@ -454,8 +455,8 @@ function sign(file) {
     console.error('\n找不到 signtool.exe，跳过签名。');
     return;
   }
-  const pfx = path.join(OUT_DIR, 'ApkStart-test.pfx');
-  const pwd = process.env.APKSTART_MSIX_PFX_PASSWORD || 'ApkStart!test';
+  const pfx = path.join(OUT_DIR, 'zApkStart-test.pfx');
+  const pwd = process.env.APKSTART_MSIX_PFX_PASSWORD || 'zApkStart!test';
   const subject = PUBLISHER;   // 必须与清单里的 Publisher 逐字一致
   if (!fs.existsSync(pfx)) {
     console.log(`\n生成自签证书（Subject=${subject}）…`);
@@ -464,7 +465,7 @@ function sign(file) {
       `$c = New-SelfSignedCertificate -Type Custom -KeyUsage DigitalSignature`
       + ` -CertStoreLocation 'Cert:\\CurrentUser\\My'`
       + ` -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3','2.5.29.19={text}')`
-      + ` -Subject '${subject}' -FriendlyName 'ApkStart MSIX Test';`
+      + ` -Subject '${subject}' -FriendlyName 'zApkStart MSIX Test';`
       + `$p = ConvertTo-SecureString -String '${pwd}' -Force -AsPlainText;`
       + `Export-PfxCertificate -Cert ("Cert:\\CurrentUser\\My\\" + $c.Thumbprint) -FilePath '${pfx}' -Password $p | Out-Null;`
       + `"thumbprint=" + $c.Thumbprint`,

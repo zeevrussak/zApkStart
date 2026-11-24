@@ -1,0 +1,193 @@
+{
+  "_comment": "Canonical topic-id -> per-locale heading map for the in-app manual (SDS Phase 5). The ids are FROZEN: they are the anchor contract shared by src/ui/manual.html, manual.en.html and manual.he.html, and by src/core/manual.js. zh matches docs/USER-MANUAL.md headings verbatim; en matches docs/manual/en.md; he matches docs/manual/he.md. A null locale field means the heading exists only in the other locales (currently arm64: zh source has no such section). Never rename an id; add new ones instead.",
+  "overview": {
+    "zh": "zApkStart 产品使用手册与问题解决方案",
+    "en": "zApkStart User Manual and Troubleshooting Guide",
+    "he": "מדריך המשתמש ופתרון הבעיות של zApkStart"
+  },
+  "contents": {
+    "zh": "目录",
+    "en": "Contents",
+    "he": "תוכן העניינים"
+  },
+  "intro": {
+    "zh": "1. 30 秒看懂 zApkStart",
+    "en": "1. zApkStart in 30 seconds",
+    "he": "1. zApkStart ב-30 שניות"
+  },
+  "setup": {
+    "zh": "2. 安装与首次启动",
+    "en": "2. Installation and first launch",
+    "he": "2. התקנה והפעלה ראשונה"
+  },
+  "setup-variants": {
+    "zh": "2.1 选择适合你的版本",
+    "en": "2.1 Pick the build that fits you",
+    "he": "2.1 בחירת הגרסה המתאימה לך"
+  },
+  "setup-first-run": {
+    "zh": "2.2 首次启动会发生什么",
+    "en": "2.2 What happens on first launch",
+    "he": "2.2 מה קורה בהפעלה הראשונה"
+  },
+  "usage": {
+    "zh": "3. 日常使用",
+    "en": "3. Everyday use",
+    "he": "3. שימוש יומיומי"
+  },
+  "usage-install": {
+    "zh": "3.1 安装应用",
+    "en": "3.1 Installing apps",
+    "he": "3.1 התקנת יישומים"
+  },
+  "launch": {
+    "zh": "3.2 打开应用",
+    "en": "3.2 Opening apps",
+    "he": "3.2 פתיחת יישומים"
+  },
+  "usage-window": {
+    "zh": "3.3 窗口与显示",
+    "en": "3.3 Windows and display",
+    "he": "3.3 חלונות ותצוגה"
+  },
+  "shortcuts": {
+    "zh": "3.4 快捷键",
+    "en": "3.4 Keyboard shortcuts",
+    "he": "3.4 קיצורי מקלדת"
+  },
+  "shared-folder": {
+    "zh": "3.5 文件互通（Windows ↔ 安卓）",
+    "en": "3.5 File exchange (Windows ↔ Android)",
+    "he": "3.5 החלפת קבצים (Windows ↔ Android)"
+  },
+  "settings": {
+    "zh": "3.6 设置页导航",
+    "en": "3.6 Settings page guide",
+    "he": "3.6 ניווט במסך ההגדרות"
+  },
+  "updates": {
+    "zh": "3.7 在线更新",
+    "en": "3.7 In-app updates",
+    "he": "3.7 עדכונים מקוונים"
+  },
+  "concepts": {
+    "zh": "4. 理解三个核心概念（看懂报错的关键）",
+    "en": "4. Three core concepts (the key to understanding errors)",
+    "he": "4. שלושה מושגי ליבה (המפתח להבנת הודעות השגיאה)"
+  },
+  "concepts-image": {
+    "zh": "4.1 运行时 / 系统镜像",
+    "en": "4.1 Runtime / system image",
+    "he": "4.1 סביבת הרצה / תמונת המערכת"
+  },
+  "concepts-accel": {
+    "zh": "4.2 硬件加速",
+    "en": "4.2 Hardware acceleration",
+    "he": "4.2 האצת חומרה"
+  },
+  "concepts-arm": {
+    "zh": "4.3 ARM 转译层",
+    "en": "4.3 The ARM translation layer",
+    "he": "4.3 שכבת התרגום של ARM"
+  },
+  "checkup": {
+    "zh": "5. 遇到问题先做这一步：体检与自动检测",
+    "en": "5. Do this first when something breaks: self-check and auto-detection",
+    "he": "5. לפני שמחפשים תקלה: בדיקת מצב וזיהוי אוטומטי"
+  },
+  "checkup-hardware": {
+    "zh": "5.1 本机体检 · 自动配置",
+    "en": "5.1 Machine self-check · automatic configuration",
+    "he": "5.1 בדיקת מצב של המחשב · הגדרה אוטומטית"
+  },
+  "autodetect": {
+    "zh": "5.2 自动检测（自动 debug）",
+    "en": "5.2 Auto-detection (automatic debug)",
+    "he": "5.2 זיהוי אוטומטי (דיבוג אוטומטי)"
+  },
+  "diag-report": {
+    "zh": "5.3 导出诊断报告",
+    "en": "5.3 Exporting a diagnostic report",
+    "he": "5.3 ייצוא דוח אבחון"
+  },
+  "auto-tutorial": {
+    "zh": "5.4 内置使用手册与自动教程",
+    "en": "5.4 The built-in manual and automatic tutorials",
+    "he": "5.4 המדריך המובנה והדרכות אוטומטיות"
+  },
+  "faq": {
+    "zh": "6. 常见问题解决方案",
+    "en": "6. Solutions to common problems",
+    "he": "6. פתרונות לבעיות נפוצות"
+  },
+  "troubleshoot-accel": {
+    "zh": "6.1 提示「未启用硬件加速」 / 开机很慢",
+    "en": "6.1 \"Hardware acceleration is not enabled\" / slow boot",
+    "he": "6.1 ההודעה \"האצת חומרה לא מופעלת\" / אתחול איטי"
+  },
+  "install": {
+    "zh": "6.2 安装失败（INSTALL_FAILED_*）",
+    "en": "6.2 Install failures (INSTALL_FAILED_*)",
+    "he": "6.2 כשלי התקנה (INSTALL_FAILED_*)"
+  },
+  "troubleshoot-arm": {
+    "zh": "6.3 系统镜像没有 ARM 转译层 / ARM 应用装不上或闪退",
+    "en": "6.3 No ARM translation layer in the system image / ARM apps fail to install or crash",
+    "he": "6.3 אין שכבת תרגום ARM בתמונת המערכת / יישומי ARM נכשלים בהתקנה או קורסים"
+  },
+  "troubleshoot-adb": {
+    "zh": "6.4 adb 未授权（允许 USB 调试）",
+    "en": "6.4 adb unauthorized (allow USB debugging)",
+    "he": "6.4 adb לא מאושר (אישור ניפוי USB)"
+  },
+  "troubleshoot-launch": {
+    "zh": "6.5 双击图标没反应 / 一直转圈 / 出现带旋转按钮的窗口",
+    "en": "6.5 Double-clicking the icon does nothing / endless spinner / a window with a rotate button",
+    "he": "6.5 לחיצה כפולה על הסמל לא עושה דבר / המתנה אינסופית / חלון עם כפתור מסתובב"
+  },
+  "troubleshoot-boot": {
+    "zh": "6.6 其它启动类问题速查表",
+    "en": "6.6 Quick reference for other startup problems",
+    "he": "6.6 טבלת עזרה לשאר בעיות ההפעלה"
+  },
+  "troubleshoot-sound": {
+    "zh": "6.7 应用没有声音 / 声音很小",
+    "en": "6.7 No sound in apps / sound is very quiet",
+    "he": "6.7 אין צליל ביישומים / הצליל חלש מדי"
+  },
+  "troubleshoot-dll": {
+    "zh": "6.8 商店版启动失败 / 0xC0000135（DLL 加载失败）",
+    "en": "6.8 Store build fails to start / 0xC0000135 (DLL load failure)",
+    "he": "6.8 כשל הפעלה בגרסת החנות / 0xC0000135 (טעינת DLL נכשלה)"
+  },
+  "troubleshoot-mic": {
+    "zh": "6.9 应用用不到麦克风 / 无法语音通话录音",
+    "en": "6.9 Apps can't use the microphone / voice calls and recording fail",
+    "he": "6.9 יישומים לא מצליחים להשתמש במיקרופון / שיחות קוליות והקלטה נכשלות"
+  },
+  "troubleshoot-gpu": {
+    "zh": "6.10 独显 / 核显渲染（显卡偏好）",
+    "en": "6.10 Discrete / integrated GPU rendering (graphics preference)",
+    "he": "6.10 רינדור בכרטיס מסך ייעודי / מובנה (העדפת מאיץ גרפי)"
+  },
+  "cli": {
+    "zh": "7. 命令行参考",
+    "en": "7. Command-line reference",
+    "he": "7. שורת הפקודה"
+  },
+  "data-dirs": {
+    "zh": "8. 数据与目录说明",
+    "en": "8. Data and directories",
+    "he": "8. נתונים ותיקיות"
+  },
+  "support": {
+    "zh": "9. 获取帮助与反馈",
+    "en": "9. Getting help and giving feedback",
+    "he": "9. קבלת עזרה ומשוב"
+  },
+  "arm64": {
+    "zh": null,
+    "en": "Windows ARM64",
+    "he": "Windows ARM64"
+  }
+}

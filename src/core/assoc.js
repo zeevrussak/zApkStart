@@ -1,15 +1,16 @@
 'use strict';
 /**
  * .apk 文件关联（仅写 HKCU，不需要管理员权限）
- * 双击 apk → apkstart.exe "%1" → 自动安装 → 自动建桌面快捷方式
+ * 双击 apk → zapkstart.exe "%1" → 自动安装 → 自动建桌面快捷方式
  */
 const { execFileSync } = require('child_process');
+const brand = require('./brand');
 
-const PROGID = 'ApkStart.apk';
+const PROGID = `${brand.PRODUCT}.apk`;
 const EXT = '.apk';
 const CLASSES = 'HKCU\\Software\\Classes';
 // 关联前的「原默认程序」记在这里，卸载时原样还回去，别把用户的关联弄丢
-const STORE_KEY = 'HKCU\\Software\\ApkStart';
+const STORE_KEY = `HKCU\\Software\\${brand.PRODUCT}`;
 const PREV_VALUE = 'assocPrev';
 
 function reg(args) {
@@ -48,7 +49,7 @@ function notifyShell() {
   const ps = `
 $sig = '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);';
 try {
-  $t = Add-Type -MemberDefinition $sig -Name 'ShNotify' -Namespace 'ApkStart' -PassThru -ErrorAction Stop;
+  $t = Add-Type -MemberDefinition $sig -Name 'ShNotify' -Namespace 'zApkStart' -PassThru -ErrorAction Stop;
   $t::SHChangeNotify(0x08000000, 0x0000, [IntPtr]::Zero, [IntPtr]::Zero);
 } catch {}
 `;
@@ -80,10 +81,10 @@ function registerAssociation(exePath, iconPath, extraArgs) {
   reg(['add', `${CLASSES}\\${EXT}`, '/ve', '/d', PROGID, '/f']);
   reg(['add', `${CLASSES}\\${EXT}\\OpenWithProgids`, '/v', PROGID, '/t', 'REG_NONE', '/f']);
 
-  reg(['add', `${CLASSES}\\${PROGID}`, '/ve', '/d', 'Android 应用包', '/f']);
-  reg(['add', `${CLASSES}\\${PROGID}`, '/v', 'FriendlyTypeName', '/d', 'Android 应用包', '/f']);
+  reg(['add', `${CLASSES}\\${PROGID}`, '/ve', '/d', 'Android 应用包 (zApkStart)', '/f']);
+  reg(['add', `${CLASSES}\\${PROGID}`, '/v', 'FriendlyTypeName', '/d', 'Android 应用包 (zApkStart)', '/f']);
   reg(['add', `${CLASSES}\\${PROGID}\\DefaultIcon`, '/ve', '/d', `"${icon}",0`, '/f']);
-  reg(['add', `${CLASSES}\\${PROGID}\\shell\\open`, '/ve', '/d', '安装到 ApkStart', '/f']);
+  reg(['add', `${CLASSES}\\${PROGID}\\shell\\open`, '/ve', '/d', '安装到 zApkStart', '/f']);
   reg(['add', `${CLASSES}\\${PROGID}\\shell\\open\\command`, '/ve', '/d', command, '/f']);
 
   notifyShell();

@@ -10,6 +10,8 @@ const path = require('path');
 const crypto = require('crypto');
 const store = require('./store');
 const { autoRotateSetting } = require('./orientation');
+const { t } = require('./i18n');
+const { CODES, mkErr } = require('./error-codes');
 
 /**
  * 镜像内「自动旋转」开关要写进 guest 的值（'1' 开 / '0' 关）。
@@ -48,42 +50,41 @@ const COMMON_ADB_PATHS = [
 ];
 
 /**
- * 把 pm install 的原始失败原因翻译成用户能看懂的中文。
- * 保留原始错误码在末尾，便于搜索排查。
+ * pm install 失败码 → 结构化错误码（error-codes.js 的键名）+ i18n key（CODES 值）。
+ */
+const INSTALL_TAG_CASES = {
+  INSTALL_FAILED_NO_MATCHING_ABIS: { code: 'INSTALL_ABI_MISMATCH', key: CODES.INSTALL_ABI_MISMATCH },
+  INSTALL_FAILED_OLDER_SDK: { code: 'INSTALL_OLDER_SDK', key: CODES.INSTALL_OLDER_SDK },
+  INSTALL_PARSE_FAILED_NO_CERTIFICATES: { code: 'INSTALL_NO_CERTIFICATES', key: CODES.INSTALL_NO_CERTIFICATES },
+  INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES: { code: 'INSTALL_CERT_MISMATCH', key: CODES.INSTALL_CERT_MISMATCH },
+  INSTALL_FAILED_VERSION_DOWNGRADE: { code: 'INSTALL_VERSION_DOWNGRADE', key: CODES.INSTALL_VERSION_DOWNGRADE },
+  INSTALL_FAILED_INSUFFICIENT_STORAGE: { code: 'INSTALL_NO_SPACE', key: CODES.INSTALL_NO_SPACE },
+  INSTALL_FAILED_INVALID_APK: { code: 'INSTALL_INVALID_APK', key: CODES.INSTALL_INVALID_APK },
+  INSTALL_FAILED_INVALID_URI: { code: 'INSTALL_INVALID_URI', key: CODES.INSTALL_INVALID_URI },
+  INSTALL_FAILED_ALREADY_EXISTS: { code: 'INSTALL_ALREADY_EXISTS', key: CODES.INSTALL_ALREADY_EXISTS },
+  INSTALL_FAILED_UPDATE_INCOMPATIBLE: { code: 'INSTALL_UPDATE_INCOMPATIBLE', key: CODES.INSTALL_UPDATE_INCOMPATIBLE },
+  INSTALL_FAILED_DEPRECATED_SDK_VERSION: { code: 'INSTALL_DEPRECATED_SDK', key: CODES.INSTALL_DEPRECATED_SDK },
+  INSTALL_FAILED_TEST_ONLY: { code: 'INSTALL_TEST_ONLY', key: CODES.INSTALL_TEST_ONLY },
+  INSTALL_FAILED_MISSING_SHARED_LIBRARY:
+    { code: 'INSTALL_MISSING_SHARED_LIBRARY', key: CODES.INSTALL_MISSING_SHARED_LIBRARY },
+  INSTALL_FAILED_USER_RESTRICTION: { code: 'INSTALL_USER_RESTRICTION', key: CODES.INSTALL_USER_RESTRICTION },
+  INSTALL_FAILED_CONFLICTING_PROVIDER:
+    { code: 'INSTALL_CONFLICTING_PROVIDER', key: CODES.INSTALL_CONFLICTING_PROVIDER },
+  INSTALL_FAILED_INTERNAL_ERROR: { code: 'INSTALL_INTERNAL_ERROR', key: CODES.INSTALL_INTERNAL_ERROR },
+};
+
+/**
+ * 把 pm install 的原始失败原因翻译成用户能看懂的文案。
+ * 返回 { code, params, raw, message }（error-codes.js 契约）：message 供界面展示
+ * （末尾保留原始错误码便于搜索排查），code/params/raw 供上层编程处理。
  */
 function friendlyInstallError(raw) {
-  const code = /INSTALL_[A-Z_]+/.exec(raw);
-  const tag = code ? code[0] : '';
-  const table = {
-    INSTALL_FAILED_NO_MATCHING_ABIS:
-      '安装失败：这个应用只提供 ARM 原生库（多数国产应用如此），'
-      + '当前系统镜像没有 ARM 转译层。ApkStart 会自动切换到内置新版翻译层的兼容镜像并重试。',
-    INSTALL_FAILED_OLDER_SDK:
-      '安装失败：应用要求的 Android 版本高于当前运行时（需更高系统镜像）。',
-    INSTALL_PARSE_FAILED_NO_CERTIFICATES:
-      '安装失败：APK 没有有效签名，无法安装。',
-    INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES:
-      '安装失败：与已安装版本签名不一致，请先卸载旧版再装。',
-    INSTALL_FAILED_VERSION_DOWNGRADE:
-      '安装失败：设备上已安装更高版本，不能降级覆盖。',
-    INSTALL_FAILED_INSUFFICIENT_STORAGE:
-      '安装失败：运行时磁盘空间不足，请清理后重试。',
-    INSTALL_FAILED_INVALID_APK:
-      '安装失败：APK 文件损坏或不完整（可能下载未完成），请重新获取。',
-    INSTALL_FAILED_INVALID_URI: '安装失败：APK 路径含特殊字符，请把文件移到纯英文路径后重试。',
-    INSTALL_FAILED_ALREADY_EXISTS: '安装失败：已存在同名应用且签名不同，请先卸载。',
-    INSTALL_FAILED_UPDATE_INCOMPATIBLE: '安装失败：与已安装版本签名不一致，请先卸载旧版。',
-    INSTALL_FAILED_DEPRECATED_SDK_VERSION:
-      '安装失败：这是面向很老 Android 版本的应用（targetSdk 过低），Android 14 默认禁止安装。'
-      + 'ApkStart 会自动用官方绕过参数重试。',
-    INSTALL_FAILED_TEST_ONLY: '安装失败：这是仅供测试的应用包，已自动加上测试包参数重试。',
-    INSTALL_FAILED_MISSING_SHARED_LIBRARY: '安装失败：应用依赖的设备特性（如特定厂商库）在当前运行时不存在。',
-    INSTALL_FAILED_USER_RESTRICTION: '安装失败：系统限制了安装，请重启运行时后重试。',
-    INSTALL_FAILED_CONFLICTING_PROVIDER: '安装失败：与已有应用的 ContentProvider 冲突，请卸载冲突应用。',
-    INSTALL_FAILED_INTERNAL_ERROR: '安装失败：系统内部错误（常见于存储空间不足或开机未完成），请重启运行时后重试。',
-  };
-  const msg = table[tag];
-  return msg ? `${msg}（${tag}）` : `安装失败：${raw}`;
+  const text = String(raw || '');
+  const tag = (/INSTALL_[A-Z_]+/.exec(text) || [])[0] || '';
+  const hit = tag ? INSTALL_TAG_CASES[tag] : null;
+  const params = hit ? {} : { raw: text };
+  const msg = t(hit ? hit.key : CODES.INSTALL_UNKNOWN, params) + (tag ? `（${tag}）` : '');
+  return { ...mkErr(hit ? hit.code : 'INSTALL_UNKNOWN', params, text), message: msg };
 }
 
 /**
@@ -94,30 +95,43 @@ function friendlyInstallError(raw) {
  */
 const ANTI_EMULATOR_RE = /anti[-_ ]?emulat|emulator.?detect|检测到.{0,6}(模拟|虚拟|调试)|反模拟|反仿真|反调试|anti[-_ ]?debug|safetynet|play.?integrity|cts.?profile|hook.?detect/i;
 
-/** 把启动后的崩溃日志翻译成能看懂的原因 */
+/** 把启动后的崩溃日志翻译成能看懂的原因；返回 { code, params, raw, message } */
 function friendlyLaunchError(raw, pkg) {
-  const t = String(raw || '');
-  if (ANTI_EMULATOR_RE.test(t)) {
-    return `${pkg || '应用'} 检测到模拟器 / 转译环境后主动退出（反模拟、反调试或安全校验），`
-      + '属于应用自身限制，不是故障；ApkStart 无法绕过，详见内置手册 6.3。';
+  const text = String(raw || '');
+  const base = { pkg: pkg || t('adb.default_app_name') };
+  let code;
+  let key;
+  let params;
+  if (ANTI_EMULATOR_RE.test(text)) {
+    code = 'LAUNCH_ANTI_EMULATOR';
+    key = CODES.LAUNCH_ANTI_EMULATOR;
+    params = base;
+  } else if (/DoBadTrampoline|libndk_translation|houdini|SIGABRT.*arm/i.test(text)) {
+    code = 'LAUNCH_ABI_CRASH';
+    key = CODES.LAUNCH_ABI_CRASH;
+    params = base;
+  } else if (/UnsatisfiedLinkError|dlopen failed|couldn't find "lib|\.so.*not found/i.test(text)) {
+    code = 'LAUNCH_MISSING_LIB';
+    key = CODES.LAUNCH_MISSING_LIB;
+    params = base;
+  } else if (/ClassNotFoundException|NoClassDefFoundError|AndroidRuntime/i.test(text)) {
+    code = 'LAUNCH_JAVA_CRASH';
+    key = CODES.LAUNCH_JAVA_CRASH;
+    params = base;
+  } else if (/java\.lang\.SecurityException|Permission Denial/i.test(text)) {
+    code = 'LAUNCH_SECURITY';
+    key = CODES.LAUNCH_SECURITY;
+    params = base;
+  } else if (text) {
+    code = 'LAUNCH_GENERIC';
+    key = CODES.LAUNCH_GENERIC;
+    params = { ...base, raw: text.slice(0, 240) };
+  } else {
+    code = 'LAUNCH_NO_PROCESS';
+    key = CODES.LAUNCH_NO_PROCESS;
+    params = base;
   }
-  if (/DoBadTrampoline|libndk_translation|houdini|SIGABRT.*arm/i.test(t)) {
-    return `${pkg || '应用'} 启动后崩溃：应用与 ARM 翻译层不兼容`
-      + '（常见于反调试 / 反模拟检测或 native hook 冲突）。'
-      + '若运行时尚未启用兼容镜像会自动切换重试一次；已启用仍崩溃则属于应用兼容性限制，'
-      + '不是故障，详见内置手册 6.3。';
-  }
-  if (/UnsatisfiedLinkError|dlopen failed|couldn't find "lib|\.so.*not found/i.test(t)) {
-    return `${pkg || '应用'} 启动后崩溃：缺少设备原生库（应用可能只提供 ARM 版本）。`
-      + '若运行时尚未启用 ARM 翻译层会自动切换兼容镜像重试；已启用仍崩溃多为应用限制，详见内置手册 6.3。';
-  }
-  if (/ClassNotFoundException|NoClassDefFoundError|AndroidRuntime/i.test(t)) {
-    return `${pkg || '应用'} 启动即崩溃（应用内部异常，可能与模拟器环境或缺少 Google 服务有关）。`;
-  }
-  if (/java\.lang\.SecurityException|Permission Denial/i.test(t)) {
-    return `${pkg || '应用'} 启动失败：系统拒绝了启动请求（权限或签名问题）。`;
-  }
-  return `${pkg || '应用'} 未能启动${t ? `：${t.slice(0, 240)}` : '（进程未存活）'}`;
+  return { ...mkErr(code, params, text), message: t(key, params) };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -296,7 +310,7 @@ class AdbClient {
           // adb install 的失败原因写在 stdout 且退出码非 0；
           // 旧版只看 stderr，导致用户永远只看到一句空泛的「失败」。
           const text = [stdout, stderr, err.message].filter(Boolean).join('\n').trim();
-          const e = new AdbError(`adb ${finalArgs.join(' ')} 失败: ${text}`, stderr, err.code);
+          const e = new AdbError(t('adb.exec_failed', { args: finalArgs.join(' '), raw: text }), stderr, err.code);
           e.stdout = stdout;
           e.raw = text;
           return reject(e);
@@ -349,10 +363,10 @@ class AdbClient {
     });
     p.stderr.on('data', () => { /* 忽略：设备离线等信息由调用方兜底 */ });
     p.stdin.on('error', () => { /* 断开时由 exit 统一清理 */ });
-    p.on('error', () => { this._failWaiters(new Error('adb shell 启动失败')); });
+    p.on('error', () => { this._failWaiters(new Error(t('adb.input_session_start_failed'))); });
     p.on('exit', () => {
       if (this._input === p) this._input = null;
-      this._failWaiters(new Error('adb shell 已退出'));
+      this._failWaiters(new Error(t('adb.input_session_exited')));
     });
     return p;
   }
@@ -368,7 +382,7 @@ class AdbClient {
   /** 执行一条白名单内的 input 命令；失败会回收会话，调用方可回退到一次性 adb */
   async input(cmd, { timeout = 4000 } = {}) {
     const { isInputCommand } = require('./pointer');
-    if (!isInputCommand(cmd)) throw new Error('非法的输入命令');
+    if (!isInputCommand(cmd)) throw new Error(t('adb.input_invalid_command'));
     const p = this._inputSession();
     const id = ++this._inputSeq;
     const token = `__APKSTART_${id}__`;
@@ -376,7 +390,7 @@ class AdbClient {
       const timer = setTimeout(() => {
         this._waiters.delete(id);
         this.disposeInput();
-        reject(new Error('input 命令超时'));
+        reject(new Error(t('adb.input_timeout')));
       }, timeout);
       this._waiters.set(id, { resolve, reject, timer, token });
       try {
@@ -394,7 +408,7 @@ class AdbClient {
     this._input = null;
     for (const [, w] of this._waiters) {
       clearTimeout(w.timer);
-      w.reject(new Error('输入通道已关闭'));
+      w.reject(new Error(t('adb.input_closed')));
     }
     this._waiters.clear();
     if (p) {
@@ -415,6 +429,19 @@ class AdbClient {
       await this.exec(['connect', this.serial], { withSerial: false, timeout: 15000 });
     } catch (_) { /* 可能已连接 */ }
     return this.isOnline();
+  }
+
+  /**
+   * 断开 TCP 传输（WSA / 外接 adb 设备模式用）：connect() 的反方向。
+   * 只拆 adb server 里的注册，设备本体（WSA 的 VM）完全不动 —— 空闲回收和
+   * Runtime.stop() 在 wsa 模式下都靠它，绝不能落到 emu kill / taskkill。
+   */
+  async disconnect() {
+    if (!this.serial.includes(':')) return true;
+    try {
+      await this.exec(['disconnect', this.serial], { withSerial: false, timeout: 8000 });
+    } catch (_) { /* 可能本来就没连 */ }
+    return true;
   }
 
   async isOnline() {
@@ -466,7 +493,11 @@ class AdbClient {
    *  - NO_MATCHING_ABIS 抛带 code 的错误，交给上层自动切换兼容镜像。
    */
   async install(apkPath) {
-    if (!fs.existsSync(apkPath)) throw new Error(`APK 不存在: ${apkPath}`);
+    if (!fs.existsSync(apkPath)) {
+      const err = new Error(t('adb.apk_not_found', { path: apkPath }));
+      err.errCode = CODES.APK_NOT_FOUND;
+      throw err;
+    }
     const staged = stageApk(apkPath);
     const file = staged.path;
     const variants = [
@@ -494,9 +525,12 @@ class AdbClient {
           const tag = (/INSTALL_[A-Z_]+/.exec(raw) || [])[0] || '';
 
           if (tag === 'INSTALL_FAILED_NO_MATCHING_ABIS') {
-            const err = new Error(friendlyInstallError(raw));
+            const fe = friendlyInstallError(raw);
+            const err = new Error(fe.message);
             err.code = 'NO_MATCHING_ABIS';
             err.raw = raw;
+            err.errCode = fe.code;
+            err.params = fe.params;
             throw err;
           }
           // 老 adb 不认新参数 / 测试包标记 → 换一种写法
@@ -509,17 +543,23 @@ class AdbClient {
             continue;
           }
           if (tag) {
-            const err = new Error(friendlyInstallError(raw));
+            const fe = friendlyInstallError(raw);
+            const err = new Error(fe.message);
             err.code = tag;
             err.raw = raw;
+            err.errCode = fe.code;
+            err.params = fe.params;
             throw err;
           }
           // 没拿到明确错误码：最后一种写法再试
         }
       }
-      const err = new Error(friendlyInstallError(last || '安装失败，未获得明确原因'));
+      const fe = friendlyInstallError(last || t('adb.install_no_clear_reason'));
+      const err = new Error(fe.message);
       err.code = (/INSTALL_[A-Z_]+/.exec(last) || [])[0] || 'INSTALL_UNKNOWN';
       err.raw = last;
+      err.errCode = fe.code;
+      err.params = fe.params;
       throw err;
     } finally {
       unstage(staged.staged ? file : null);
@@ -528,7 +568,11 @@ class AdbClient {
 
   /** 拆分 APK（.apks / .xapk 解出来的多个分片）走 install-multiple */
   async installMultiple(apkPaths) {
-    if (!apkPaths || !apkPaths.length) throw new Error('没有可安装的分片 APK');
+    if (!apkPaths || !apkPaths.length) {
+      const err = new Error(t('adb.no_split_parts'));
+      err.errCode = CODES.INSTALL_NO_SPLIT_PARTS;
+      throw err;
+    }
     const staged = apkPaths.map((p) => stageApk(p));
     const files = staged.map((s) => s.path);
     const totalBytes = staged.reduce((n, s) => n + (fs.existsSync(s.path) ? fs.statSync(s.path).size : 0), 0);
@@ -544,14 +588,21 @@ class AdbClient {
           const raw = String(e.raw || e.stdout || e.message || '');
           if (/Unknown option|unrecognized option/i.test(raw)) continue;
           if (/INSTALL_FAILED_NO_MATCHING_ABIS/.test(raw)) {
-            const err = new Error(friendlyInstallError(raw));
+            const fe = friendlyInstallError(raw);
+            const err = new Error(fe.message);
             err.code = 'NO_MATCHING_ABIS';
+            err.errCode = fe.code;
+            err.params = fe.params;
             throw err;
           }
-          throw new Error(friendlyInstallError(raw));
+          throw new Error(friendlyInstallError(raw).message);
         }
       }
-      throw new Error('拆分 APK 安装失败');
+      {
+        const err = new Error(t('adb.split_install_failed'));
+        err.errCode = CODES.INSTALL_SPLIT_FAILED;
+        throw err;
+      }
     } finally {
       staged.forEach((s) => unstage(s.staged ? s.path : null));
     }
@@ -680,13 +731,16 @@ class AdbClient {
       // eslint-disable-next-line no-await-in-loop
       const alive = await this.waitAppAlive(pkg, 6000);
       if (alive.ok) return out;
-      if (alive.uncertain) return `${out}\n（应用仍在加载中）`;
+      if (alive.uncertain) return `${out}\n${t('adb.app_still_loading')}`;
       lastError = alive.crash || lastError;
       // 崩溃日志明确指向 ARM 翻译层时不再重试，直接交给上层切换兼容镜像
       if (/DoBadTrampoline|libndk_translation|UnsatisfiedLinkError|dlopen failed/i.test(alive.crash || '')) {
-        const err = new Error(friendlyLaunchError(alive.crash, pkg));
+        const fe = friendlyLaunchError(alive.crash, pkg);
+        const err = new Error(fe.message);
         err.code = 'APP_CRASHED';
         err.crash = alive.crash;
+        err.errCode = fe.code;
+        err.params = fe.params;
         throw err;
       }
     }
@@ -705,9 +759,12 @@ class AdbClient {
     }
 
     if (!lastError) return 'started';
-    const err = new Error(friendlyLaunchError(lastError, pkg));
+    const fe = friendlyLaunchError(lastError, pkg);
+    const err = new Error(fe.message);
     err.code = 'APP_CRASHED';
     err.crash = lastError;
+    err.errCode = fe.code;
+    err.params = fe.params;
     throw err;
   }
 
@@ -905,8 +962,10 @@ class AdbClient {
    *  - 隐藏状态栏（保留底部导航键，鼠标不在手边时还能点返回/主页）；
    *  - 关掉系统动画，低配机器上体感差别非常大。
    * 全部是 settings 级命令，一次几百毫秒，重复调用无害。
+   * @param {{chinaNet?:boolean}} [opts] chinaNet=true（设置里的 fastDns，中国网络
+   *   档）时联网验证端点用国内可达的 miui；默认走安卓原生的 gstatic。
    */
-  async prepareForeground() {
+  async prepareForeground(opts = {}) {
     // 以前是 7 条命令串行发，每条都要新起一个 adb 进程（Windows 上 150~250ms），
     // 合计 1~1.7 秒，全压在「点开应用」的等待里。合成一条 shell 后只剩一次往返。
     const cmds = [
@@ -921,13 +980,21 @@ class AdbClient {
       // 盖住应用内容、按键挤在左下角（用户反馈的「按键错位」）。
       // 见 disableLauncherTaskbar()：这里每次启动都补一刀，幂等且只多一次往返。
       'settings put global enable_taskbar 0',
-      // 联网验证：安卓默认拿 connectivitycheck.gstatic.com 判断「是否真能上网」，
-      // 国内连不上它，系统就一直给网络打「!」标记（已连接但无法访问互联网），
-      // 部分应用据此自我判定离线、拒绝加载内容。换成国内返回 204 的端点。
+      // 联网验证：安卓拿 captive portal 端点判断「是否真能上网」，端点连不上时
+      // 系统一直给网络打「!」标记（已连接但无法访问互联网），部分应用据此自我
+      // 判定离线、拒绝加载内容。默认用安卓原生的 gstatic 端点；中国网络档
+      // （设置里的 fastDns，gstatic 在国内连不上）才换成国内返回 204 的 miui 端点。
       // 每次启动都写一次（幂等、单条 shell 里，几乎零成本），这样即使从旧快照
       // 恢复、或用户手动改过系统设置，也能自动纠正回来。
-      'settings put global captive_portal_http_url http://connect.rom.miui.com/generate_204',
-      'settings put global captive_portal_https_url https://connect.rom.miui.com/generate_204',
+      ...(opts.chinaNet
+        ? [
+          'settings put global captive_portal_http_url http://connect.rom.miui.com/generate_204',
+          'settings put global captive_portal_https_url https://connect.rom.miui.com/generate_204',
+        ]
+        : [
+          'settings put global captive_portal_http_url http://connectivitycheck.gstatic.com/generate_204',
+          'settings put global captive_portal_https_url https://connectivitycheck.gstatic.com/generate_204',
+        ]),
       'settings put global captive_portal_mode 0',
       // 注意：这里不要再写 wm user-rotation / accelerometer_rotation。
       // 方向由 setOrientation / resetDisplayOverrides 按当前横竖屏状态统一定，
@@ -1114,7 +1181,7 @@ class AdbClient {
       let justInstalled = false;
       if (!installed) {
         if (!apkPath || !fs.existsSync(apkPath)) {
-          return { ok: false, reason: '输入法 APK 缺失' };
+          return { ok: false, reason: t('adb.ime_apk_missing') };
         }
         await this.install(apkPath);
         installed = true;
@@ -1128,7 +1195,7 @@ class AdbClient {
           await new Promise((r) => setTimeout(r, 800));
         }
       }
-      if (!installed) return { ok: false, justInstalled, reason: '输入法包未注册' };
+      if (!installed) return { ok: false, justInstalled, reason: t('adb.ime_not_registered') };
       // 启用 + 设为默认（secure settings 可写，不需要 root）。
       // 每次都执行：从旧快照恢复时 enabled 标记可能丢失，或用户手动换过默认输入法。
       const cmds = [`ime enable ${IME_ID}`];

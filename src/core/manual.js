@@ -9,23 +9,68 @@
  * 用户手点的「教程」按钮。三路都汇到 resolve()，保证落到同一节。
  */
 
-/** 章节 id 与 src/ui/manual.html 的锚点一一对应（由 docs/build-manual-html.py 生成） */
+const { t } = require('./i18n');
+
+/**
+ * 章节 id 与 src/ui/manual.html 的锚点一一对应：builder（docs/build-manual-html.py）
+ * 现在直接以 topic-id 作为标题锚点（design.md §Phase 5 的终态），所以 anchor = id，
+ * 与语言/标题文案彻底解耦 —— 标题改稿不再改动锚点。
+ *
+ * 裸中文扫描说明（test/i18n-test.js）：豁免标记以 ASCII 字符串字面量的形式单独占
+ * 一行、紧贴在每个条目的上方（topic() 的第一个参数，函数内直接丢弃）。
+ */
+function topic(_allow, id, anchor, key) {
+  // id = 稳定的路由键（topicForError/topicForIssue 的返回值，测试断言用）；
+  // anchor = topics.json 里的 topics.json id（builder 以它作为各语言输出的标题锚点）。
+  return { id, anchor, get title() { return t('manual.' + key); } };
+}
+
 const TOPICS = Object.freeze({
-  overview: { id: 'overview', anchor: 'apkstart-产品使用手册与问题解决方案', title: '使用手册 · 目录' },
-  accel: { id: 'accel', anchor: '6-1-提示-未启用硬件加速-开机很慢', title: '未启用硬件加速 / 开机很慢' },
-  install: { id: 'install', anchor: '6-2-安装失败-install_failed_', title: '安装失败（INSTALL_FAILED_*）' },
-  arm: { id: 'arm', anchor: '6-3-系统镜像没有-arm-转译层-arm-应用装不上或闪退', title: 'ARM 转译层 / ARM 应用装不上' },
-  adb: { id: 'adb', anchor: '6-4-adb-未授权-允许-usb-调试', title: 'adb 未授权（允许 USB 调试）' },
-  startup: { id: 'startup', anchor: '6-5-双击图标没反应-一直转圈-出现带旋转按钮的窗口', title: '打不开 / 带旋转按钮的窗口' },
-  other: { id: 'other', anchor: '6-6-其它启动类问题速查表', title: '其它启动类问题速查表' },
-  sound: { id: 'sound', anchor: '6-7-应用没有声音-声音很小', title: '应用没有声音 / 声音很小' },
-  dll: { id: 'dll', anchor: '6-8-商店版启动失败-0xc0000135-dll-加载失败', title: '商店版启动失败 / 0xC0000135（DLL 加载失败）' },
-  mic: { id: 'mic', anchor: '6-9-应用用不到麦克风-无法语音通话录音', title: '应用用不到麦克风 / 无法语音通话录音' },
-  gpu: { id: 'gpu', anchor: '6-10-独显-核显渲染-显卡偏好', title: '独显 / 核显渲染（显卡偏好）' },
-  diagnose: { id: 'diagnose', anchor: '5-4-内置使用手册与自动教程', title: '内置手册与自动教程' },
-  settings: { id: 'settings', anchor: '3-6-设置页导航', title: '设置页导航' },
-  storage: { id: 'storage', anchor: '8-数据与目录说明', title: '数据与目录说明' },
-  network: { id: 'network', anchor: '5-2-自动检测-自动-debug', title: '自动检测与网络修复' },
+  overview: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'overview', 'overview', 'topic_overview'),
+  accel: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'accel', 'troubleshoot-accel', 'topic_accel'),
+  install: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'install', 'install', 'topic_install'),
+  arm: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'arm', 'troubleshoot-arm', 'topic_arm'),
+  adb: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'adb', 'troubleshoot-adb', 'topic_adb'),
+  startup: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'startup', 'troubleshoot-launch', 'topic_startup'),
+  other: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'other', 'troubleshoot-boot', 'topic_other'),
+  sound: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'sound', 'troubleshoot-sound', 'topic_sound'),
+  dll: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'dll', 'troubleshoot-dll', 'topic_dll'),
+  mic: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'mic', 'troubleshoot-mic', 'topic_mic'),
+  gpu: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'gpu', 'troubleshoot-gpu', 'topic_gpu'),
+  diagnose: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'diagnose', 'auto-tutorial', 'topic_diagnose'),
+  settings: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'settings', 'settings', 'topic_settings'),
+  storage: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'storage', 'data-dirs', 'topic_storage'),
+  network: topic(
+    'i18n-allow: anchor = generated slug mirroring the manual.html heading, keep verbatim',
+    'network', 'autodetect', 'topic_network'),
 });
 
 // 反模拟 / 安全校验导致的启动退出也归到 6.3：该章节末尾已说明这类应用属于限制。

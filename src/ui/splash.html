@@ -1,46 +1,46 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
-<title>ApkStart</title>
+<title>zApkStart</title>
 <link rel="stylesheet" href="splash.css" />
 </head>
 <body>
 <div class="splash" id="splash">
-  <!-- 极简苹果风氛围层：柔和光晕，缓慢呼吸 -->
+  <!-- Minimal ambience layer: soft glow, slow breathing -->
   <div class="aura" aria-hidden="true"></div>
   <div class="halo" aria-hidden="true"></div>
 
-  <!-- Logo 区域 -->
+  <!-- Logo area -->
   <div class="logo-wrap">
     <div class="logo-glow" aria-hidden="true"></div>
-    <img class="logo" id="logo" src="assets/logo.png" alt="ApkStart" draggable="false" />
-    <div class="brand">ApkStart</div>
-    <div class="tagline">Windows 上的安卓应用运行器</div>
+    <img class="logo" id="logo" src="assets/logo.png" alt="zApkStart" draggable="false" />
+    <div class="brand">zApkStart</div>
+    <div class="tagline" data-i18n="ui.splash_tagline">Android app runner for Windows</div>
   </div>
 
-  <!-- 进度条 -->
+  <!-- Progress bar -->
   <div class="progress-wrap">
     <div class="progress-bar" id="progressBar"></div>
   </div>
 
-  <!-- 状态文字 -->
-  <div class="status" id="status">正在准备…</div>
+  <!-- Status text -->
+  <div class="status" id="status" data-i18n="ui.splash_status_preparing">Preparing…</div>
 
-  <!-- 首次安装提示（默认隐藏，由主进程控制显示） -->
+  <!-- First-run hint (hidden by default; the main process controls it) -->
   <div class="first-run" id="firstRun" hidden>
-    <div class="first-run-title" id="firstRunTitle">首次使用 · 自动配置中</div>
+    <div class="first-run-title" id="firstRunTitle" data-i18n="ui.splash_firstrun_title">First run · auto-configuring</div>
     <ul class="first-run-list" id="firstRunList">
-      <li>下载 Android 运行时引擎（约 200MB，只需一次）</li>
-      <li>下载系统镜像（约 1.5GB，只需一次）</li>
-      <li>配置硬件加速与网络</li>
-      <li>完成后即可双击 APK 或桌面图标秒开应用</li>
+      <li data-i18n="ui.splash_firstrun_1">Download the Android runtime engine (about 200MB, one time only)</li>
+      <li data-i18n="ui.splash_firstrun_2">Download the system image (about 1.5GB, one time only)</li>
+      <li data-i18n="ui.splash_firstrun_3">Configure hardware acceleration and network</li>
+      <li data-i18n="ui.splash_firstrun_4">Then double-click an APK or desktop icon to open apps instantly</li>
     </ul>
   </div>
 
-  <!-- 底部版权 -->
-  <div class="footer">Powered by RoutineMiku · v<span id="ver"></span></div>
+  <!-- Footer: fork identity + upstream attribution (MIT requires keeping the upstream notice) -->
+  <div class="footer">zApkStart · fork of ApkStart by RoutineMiku · v<span id="ver"></span></div>
 </div>
 
 <script src="splash.js"></script>

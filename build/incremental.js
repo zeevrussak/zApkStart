@@ -8,8 +8,8 @@
  * 版本一致时就只下这两个小文件，覆盖 resources/app 即可完成升级。
  *
  * 产物（写到 --out 目录，默认当前目录）：
- *   ApkStart-v<版本>-manifest.json
- *   ApkStart-v<版本>-app.zip
+ *   zApkStart-v<版本>-manifest.json
+ *   zApkStart-v<版本>-app.zip
  *
  * 用法：node build/incremental.js <便携版目录> <tag> [--out 目录]
  */
@@ -18,6 +18,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { sha256File } = require('../src/core/download');
 const { find7z } = require('./zip');
+const brand = require('../src/core/brand');
 
 const ROOT = path.dirname(__dirname);
 
@@ -66,15 +67,15 @@ function zipApp(exe, srcDir, outZip, rootDir) {
 async function build(portableDir, tag, outDir = process.cwd()) {
   const portable = path.resolve(portableDir);
   const appDir = path.join(portable, 'resources', 'app');
-  if (!fs.existsSync(path.join(portable, 'ApkStart.exe'))) throw new Error('便携版目录缺少 ApkStart.exe');
+  if (!fs.existsSync(path.join(portable, brand.EXE_NAME))) throw new Error(`便携版目录缺少 ${brand.EXE_NAME}`);
   if (!fs.existsSync(path.join(appDir, 'package.json'))) throw new Error('便携版目录缺少 resources/app/package.json');
 
   const version = String(tag || '').replace(/^v/i, '');
   if (!version) throw new Error('缺少版本号 / tag');
 
   fs.mkdirSync(outDir, { recursive: true });
-  const appName = `ApkStart-v${version}-app.zip`;
-  const manifestName = `ApkStart-v${version}-manifest.json`;
+  const appName = `${brand.ASSET_PREFIX}v${version}-app.zip`;
+  const manifestName = `${brand.ASSET_PREFIX}v${version}-manifest.json`;
   const appZip = path.join(outDir, appName);
   const manifestPath = path.join(outDir, manifestName);
 
@@ -105,7 +106,7 @@ async function build(portableDir, tag, outDir = process.cwd()) {
       size: fs.statSync(appZip).size,
       files,
     },
-    full: { asset: `ApkStart-v${version}-win64-portable.zip` },
+    full: { asset: `${brand.ASSET_PREFIX}v${version}-win64-portable.zip` },
   };
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 

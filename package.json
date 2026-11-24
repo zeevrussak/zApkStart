@@ -1,19 +1,22 @@
 {
-  "name": "apkstart",
-  "productName": "ApkStart",
-  "version": "0.6.4",
-  "description": "极致轻量的 Windows 安卓应用运行器：双击 APK 即装，应用以独立窗口与桌面图标运行",
+  "name": "zapkstart",
+  "productName": "zApkStart",
+  "version": "0.6.4-zk.1",
+  "description": "Run Android apps on Windows like native desktop software: double-click an APK to install, each app gets its own window. English + Hebrew UI with full RTL (fork of ApkStart by RoutineMiku).",
   "main": "src/main.js",
-  "author": "RoutineMiku",
+  "author": "Ze'ev Russak",
+  "contributors": [
+    "RoutineMiku (original ApkStart)"
+  ],
   "license": "MIT",
   "private": true,
-  "homepage": "https://github.com/RoutineMiku/apkstart#readme",
+  "homepage": "https://github.com/zeevrussak/zApkStart#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RoutineMiku/apkstart.git"
+    "url": "git+https://github.com/zeevrussak/zApkStart.git"
   },
   "bugs": {
-    "url": "https://github.com/RoutineMiku/apkstart/issues"
+    "url": "https://github.com/zeevrussak/zApkStart/issues"
   },
   "keywords": [
     "android",
@@ -22,8 +25,10 @@
     "windows",
     "qemu",
     "electron",
-    "wsa",
-    "freeform"
+    "freeform",
+    "arm64",
+    "hebrew",
+    "rtl"
   ],
   "engines": {
     "node": ">=20"
@@ -35,21 +40,19 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node test/run-tests.js && node test/android-test.js && node test/range-validation-test.js && node test/display-scale-test.js && node test/resources-test.js && node test/drivers-test.js && node test/preflight-test.js && node test/standalone-test.js && node test/boot-auth-test.js && node test/issue-hardening-test.js && node test/autodebug-test.js && node test/settings-categories-test.js && node test/engine-test.js && node test/manual-test.js && node test/incremental-test.js && node test/auto-test.js",
+    "test": "node test/run-tests.js && node test/android-test.js && node test/range-validation-test.js && node test/display-scale-test.js && node test/resources-test.js && node test/drivers-test.js && node test/preflight-test.js && node test/standalone-test.js && node test/boot-auth-test.js && node test/issue-hardening-test.js && node test/autodebug-test.js && node test/settings-categories-test.js && node test/engine-test.js && node test/manual-test.js && node test/incremental-test.js && node test/auto-test.js && node test/identity-gate-test.js && node test/i18n-test.js && node test/rtl-css-test.js && node test/arch-test.js",
     "test:ui": "electron test/settings-ui-test.js",
     "build:manual": "python docs/build-manual-html.py",
     "pack": "node build/pack.js",
     "runtime": "node build/prepare-runtime.js",
     "build:exe": "node build/prepare-runtime.js && electron-builder --win nsis --config electron-builder.yml",
-    "build:appx": "node build/prepare-runtime.js && electron-builder --win appx --x64 --config electron-builder.yml",
+    "build:exe:arm64": "electron-builder --win nsis --arm64 --config electron-builder.yml",
     "build:msix": "node build/msix.js",
     "selftest": "node scripts/selftest.js",
     "assoc:on": "node scripts/assoc.js on",
     "assoc:off": "node scripts/assoc.js off",
     "test:boot": "node test/boot-test.js",
-    "pack:linux": "electron-builder --linux AppImage --config electron-builder.yml",
     "icons": "electron build/build-icons.js",
-    "shots": "electron build/store-shots.js",
     "pack:full": "node build/pack.js --full",
     "build:all": "node build/pack.js && node build/pack.js --full && node build/msix.js"
   },

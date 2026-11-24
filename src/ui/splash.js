@@ -1,10 +1,26 @@
 'use strict';
-/* ApkStart 开机动画脚本：接收主进程的进度更新，控制淡出 */
+/* zApkStart 开机动画脚本：接收主进程的进度更新，控制淡出 */
 
-const api = window.apkstartSplash;
+const api = window.zapkstartSplash;
 if (!api) { /* preload 未注入时静默退出 */ }
 
 const $ = (id) => document.getElementById(id);
+
+/* ---------------- 界面语言（i18n） ---------------- */
+let t = (key) => key;
+function applyStatic() {
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+}
+(async () => {
+  if (!api || !api.i18n) { applyStatic(); return; }
+  try {
+    const st = await api.i18n.state();
+    t = st.t;
+    document.documentElement.dir = st.dir;
+    document.documentElement.lang = st.locale;
+  } catch (_) { /* 桥不可用时保持兜底 */ }
+  applyStatic();
+})();
 
 // 版本号
 api?.version?.().then((v) => { if ($('ver')) $('ver').textContent = v || ''; }).catch(() => {});
@@ -20,14 +36,14 @@ Promise.all([
   // 用户抱怨的就是「装了 850MB 还在下镜像」，实际那只是把包里的压缩镜像
   // 展开到用户目录，不需要联网。
   if (bundled) {
-    if ($('firstRunTitle')) $('firstRunTitle').textContent = '首次启动 · 本地准备中（无需联网）';
+    if ($('firstRunTitle')) $('firstRunTitle').textContent = t('ui.splash_firstrun_bundled_title');
     if ($('firstRunList')) {
       $('firstRunList').innerHTML = [
-        '<li>运行时组件已随安装包内置，不再下载任何东西</li>',
-        '<li>把系统镜像展开到用户目录（约 1 分钟，只需一次）</li>',
-        '<li>准备硬件加速与中文输入法</li>',
-        '<li>完成后双击 APK 或桌面图标即可秒开应用</li>',
-      ].join('');
+        t('ui.splash_firstrun_bundled_1'),
+        t('ui.splash_firstrun_bundled_2'),
+        t('ui.splash_firstrun_bundled_3'),
+        t('ui.splash_firstrun_bundled_4'),
+      ].map((x) => '<li>${x}</li>').join('');
     }
   }
 }).catch(() => {});

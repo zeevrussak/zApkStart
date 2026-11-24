@@ -2,29 +2,41 @@
 /**
  * 底座注册表
  *
- * **只有一个底座：自带运行时（builtin）。**
+ * **两个底座：自带运行时（builtin）+ WSA（wsa，检测式）。**
  *
- * 0.5.6 起，ApkStart 在任何机器、任何情况下都只跑自己的 Android 运行时
- * （自带的 adb / emulator / 系统镜像），不再探测、接管、驱动任何第三方模拟器
- * （MuMu / 雷电 / 蓝叠 / WSA / FydeOS），也不提供「连接已有运行时」的模式。
+ * 历史：0.5.6 曾把所有第三方底座（MuMu / 雷电 / 蓝叠 / WSA / FydeOS）整条删除，
+ * 理由是「顺手接管」事故 —— 用户机器上装了什么就被驱动什么，数据、存档、镜像
+ * 全都不在自己以为的地方。docs/backend-roadmap.md:15,87-91 据此把 WSA 记为「❌ 不可行」。
  *
- * 为什么把可选底座整条链路删掉，而不是只留个开关关掉：
- *   - 只要代码里还留着探测分支，用户机器上装了 MuMu 就随时可能被「顺手接管」，
- *     表现成「点开 ApkStart 却跑的是别人家的模拟器」，数据、存档、镜像都不在自己以为的地方；
- *   - 第三方模拟器升级、换端口、改配置都会让 ApkStart 直接失效，而这些不是我们能修的；
- *   - 商店包 / 便携版只带自己的运行时，本来也不允许捆绑或依赖任何第三方模拟器。
- * 所以这里保留注册表的形式（上层接口不变），内容固定为 builtin：
- * 读设置、读残留配置、导入旧 settings.json 都不会再切到别的底座。
+ * **本 fork 推翻了其中针对 WSA 的裁决**（docs/zapkstart/wsa-backend.md，含反转理由）：
+ * Windows ARM64 上 Google 不发布模拟器二进制，x64 引擎在 Windows 模拟下对真实应用
+ * 不可用，而 WSA 是该平台上唯一产品化的原生 ARM64 安卓（freeform 窗口 + adb 端点），
+ * 且有活跃的社区续作。检测式 + 只经 adb 驱动，让上游当年的合规顾虑可控。
+ *
+ * 反抢保证**保留但收窄**（不再是无条件删代码）：
+ *   1. mode 只能由用户在设置里显式选（settings 引擎分段控件 id 是 setEngineBackend）；
+ *   2. create() 只在包探测确认已安装时才放行 wsa，否则回落 builtin 并记日志 ——
+ *      「settings.json 里写了 wsa」不等于「会被采用」（保守放行）；
+ *   3. autoPick() 永远返回 builtin，绝不做任何探测 —— 「装了就用」正是 0.5.6 要除掉的行为；
+ *   4. store.js 用精确匹配白名单压 mode：mumu / fydeos / attach / 手改乱填一律 builtin。
+ *
+ * 仍然整条禁止的：任何形式的「探测第三方模拟器 → 接管」（MuMu / 雷电 / 蓝叠 / FydeOS）。
+ * WSA 不是模拟器接管 —— 它是我们自己算出的端点（127.0.0.1:5855）上的一台设备，
+ * 且只有用户点名才会被连接。
  */
 
 const { Backend, CAPS } = require('./base');
 const { BuiltinBackend } = require('./builtin');
+const { WsaBackend } = require('./wsa');
+const arch = require('../arch');
+const { t } = require('../i18n');
 
 const REGISTRY = [
   BuiltinBackend,
+  WsaBackend,
 ];
 
-/** 唯一底座。保留这个常量，是给「以后真要加底座」的地方留个明确落点。 */
+/** 默认底座。autoPick 永远落在这里；「以后真要加底座」的显式落点保留。 */
 const ONLY = 'builtin';
 
 function byId(id) {
@@ -42,26 +54,43 @@ function describe() {
 }
 
 /**
- * 按设置创建一个底座实例。
+ * 按设置创建一个底座实例（保守放行）。
  *
- * 注意：**故意忽略 settings.engine.mode**。老版本可能留下 mode=mumu / fydeos / attach，
- * 手改 settings.json 也可能写成别的值 —— 这些都必须被当成 builtin，
- * 否则「无论什么情况都独立运行」就是一句空话。返回值里的 id 一定是 'builtin'。
+ * 放行规则：
+ *   - mode === 'wsa' 且探测缓存确认已安装（arch.wsaEngineNow() === 'available'，
+ *     或测试显式传 wsaAvailable）→ WsaBackend；
+ *   - 其它一切情况（mode 是 mumu/fydeos/attach/乱填、wsa 但没装/没探测过）→ BuiltinBackend，
+ *     wsa 落空时记一条日志说明原因。
  *
- * @param {object} o { appRoot, settings, runtime, store, log, id }
+ * 注意探测读的是**缓存**（绝不在这里拉 PowerShell）：真正的探测发生在
+ * arch.detectWsa()（Runtime 初始化 / prewarm / 设置页会触发），没探测过 = 'unknown'
+ * = 不放行。宁可让用户再点一次，也不在启动路径上偷偷扫系统包数据库。
+ *
+ * @param {object} o { appRoot, settings, runtime, store, log, id, wsaAvailable, backendDeps }
  * @returns {{ backend: Backend, Cls: Function, id: string }}
  */
-function create({ appRoot, runtime, store, log, id: forced } = {}) {
-  // 显式传了别的 id（旧代码的回退路径）也一律落到 builtin
-  const id = forced && byId(forced) ? forced : ONLY;
+function create({ appRoot, runtime, store: storeDeps, log, id: forced, wsaAvailable, settings, backendDeps } = {}) {
+  const mode = String((settings && settings.engine && settings.engine.mode) || ONLY);
+  let id = ONLY;
+  if (forced && byId(forced)) {
+    // 显式传了注册表里的 id（旧代码回退路径）：尊重，但第三方 id 依然不在注册表里
+    id = forced;
+  } else if (mode === 'wsa') {
+    const available = typeof wsaAvailable === 'boolean'
+      ? wsaAvailable
+      : arch.wsaEngineNow() === 'available';
+    if (available) id = 'wsa';
+    else if (typeof log === 'function') log(t('wsa.fallback_builtin'));
+  }
   const Cls = byId(id) || BuiltinBackend;
-  const backend = new Cls(appRoot, { runtime, store, log });
+  const backend = new Cls(appRoot, { runtime, store: storeDeps, log, ...(backendDeps || {}) });
   return { backend, Cls, id: Cls.id };
 }
 
 /**
- * 自动挑选底座。现在只有一个，永远返回 builtin，不做任何探测：
- * 探测本身就会去碰第三方模拟器的目录 / 注册表，那正是要去掉的行为。
+ * 自动挑选底座。永远返回 builtin，不做任何探测：
+ * 探测本身就会去碰系统包数据库 / 第三方模拟器的目录，那正是 0.5.6 要除掉的行为。
+ * WSA 只能由用户显式选择，永远不会「因为装了就被选上」。
  */
 async function autoPick() {
   return { id: ONLY, reason: 'builtin-only' };

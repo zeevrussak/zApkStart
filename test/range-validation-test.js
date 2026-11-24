@@ -13,6 +13,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { download, downloadParallel, downloadMulti, validRange } = require('../src/core/download');
+// 错误文案断言钉住中文（i18n 默认 auto 会跟随本机语言）
+require('../src/core/i18n').setActiveT('zh-CN', '');
 
 let passed = 0;
 let failed = 0;

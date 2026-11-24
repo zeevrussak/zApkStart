@@ -14,12 +14,15 @@
  * 纯逻辑模块：算注册表键/值、模式归一化，不在这里执行 reg.exe。主进程拿到
  * preferenceCommand() 的结果后自己决定是否执行（写注册表是可选增强，失败不影响启动）。
  */
+const { t } = require('./i18n');
+
 const KEY = 'HKCU\\Software\\Microsoft\\DirectX\\UserGpuPreferences';
 
+// label 用 getter：MODES 在 require 时冻结，设置页读取 label 时才按当前语言解析
 const MODES = Object.freeze({
-  auto: { value: '', preference: null, label: '系统默认（推荐）' },
-  integrated: { value: 'GpuPreference=1;', preference: 1, label: '核显优先（省电）' },
-  discrete: { value: 'GpuPreference=2;', preference: 2, label: '独显优先（性能）' },
+  auto: { value: '', preference: null, get label() { return t('gpupref.label_auto'); } },
+  integrated: { value: 'GpuPreference=1;', preference: 1, get label() { return t('gpupref.label_integrated'); } },
+  discrete: { value: 'GpuPreference=2;', preference: 2, get label() { return t('gpupref.label_discrete'); } },
 });
 
 /** 归一化模式：非法值一律回退 auto，绝不让外部输入拼进注册表命令 */

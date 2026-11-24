@@ -1,12 +1,14 @@
 'use strict';
 /**
  * 本地持久化：应用清单 + 设置
- * 数据目录：%APPDATA%\apkstart（MSIX/商店版见下面的 STORE_BUILD 说明）
+ * 数据目录：%APPDATA%\zapkstart（MSIX/商店版见下面的 STORE_BUILD 说明）
+ * 与上游 ApkStart 的数据目录完全隔离（clean break，无迁移）—— 见 NOTICE.md。
  */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { safeFilePart } = require('./pkgname');
+const brand = require('./brand');
 
 /**
  * 是不是 Microsoft Store（MSIX / APPX）打包版？
@@ -27,12 +29,24 @@ const STORE_BUILD = (() => {
 })();
 
 const DATA_DIR = STORE_BUILD
-  ? path.join(os.homedir(), 'ApkStart', 'data')
-  : path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'apkstart');
+  ? path.join(os.homedir(), brand.STORE_DATA_DIRNAME, 'data')
+  : path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), brand.DATA_DIRNAME);
 const ICON_DIR = path.join(DATA_DIR, 'icons');
 const APK_DIR = path.join(DATA_DIR, 'apks');
 const APPS_FILE = path.join(DATA_DIR, 'apps.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+
+/**
+ * 引擎模式的精确匹配允许列表。
+ * builtin 之外只放行 wsa（WSA 检测式底座，docs/zapkstart/wsa-backend.md）：
+ * opt-in、只经 adb 驱动、且注册表还要再核一次包探测 —— 「wsa」写在 settings.json
+ * 里并不等于会被采用（见 backends/index.js create 的保守放行）。
+ * 其它任何残留值（mumu / fydeos / attach / 手改乱填）一律回 builtin。
+ */
+const ENGINE_MODES = new Set(['builtin', 'wsa']);
+
+/** WSA adb 端口：5855 是官方默认；实测有 5555 的社区变体，探测失败时回退一次（见 backends/wsa.js） */
+const DEFAULT_WSA_PORT = 5855;
 
 const DEFAULT_SETTINGS = {
   adbPath: '',
@@ -43,9 +57,12 @@ const DEFAULT_SETTINGS = {
    */
   drivers: { state: {}, disabled: [] },
   engine: {
-    // 只有一个运行时：自带运行时（builtin）。字段保留是为了兼容老 settings.json 的合并，
-    // 读设置时会被强制写回 'builtin'（见 getSettings 的迁移）。
+    // 只有一个自持运行时：自带运行时（builtin）。
+    // 'wsa' 是用户显式选择后才会出现的模式（WSA 检测式底座，见 docs/zapkstart/wsa-backend.md）；
+    // 其它任何值在读设置时会被精确匹配白名单压回 'builtin'（见 getSettings 的迁移）。
     mode: 'builtin',
+    // WSA 模式的 adb 端口：官方 5855。探测失败会自动试一次 5555 并把可用值写回这里。
+    wsaPort: DEFAULT_WSA_PORT,
     qemuPath: '',
     systemImage: '',
     memoryMB: 0,             // 0 = 由 doctor 按机器内存自动决定
@@ -79,12 +96,13 @@ const DEFAULT_SETTINGS = {
     dataPartitionGB: 0,
     // 渲染分辨率：越低越流畅、越省电；auto = 按加速状态选 720x1280 / 540x960
     renderSize: 'auto',
-    // 网络加速：给模拟器指定国内公共 DNS。安卓默认的 10.0.2.3 要走主机 DNS，
-    // VPN / 公司网 / 某些运营商下解析会拖到几百毫秒，视频类应用首屏会明显发卡。
-    fastDns: true,
+    // 网络加速：给模拟器指定公共 DNS（上游默认开启并写死为国内源 223.5.5.5/119.29.29.29）。
+    // zApkStart 面向国际用户，默认改为关闭（走安卓默认的 10.0.2.3 → 主机 DNS）；
+    // 需要的用户可在设置里显式打开。
+    fastDns: false,
     // 系统语言：开机时由 emulator -prop 注入（guest 里 setprop 会被 SELinux 拒绝）。
-    // 默认简体中文。设成 en-US 或 off 就回到镜像原生英文。
-    locale: 'zh-CN',
+    // 默认跟随界面语言（见 ui.locale）：'follow' = 跟随；也可显式指定 en-US / zh-CN / he-IL。
+    locale: 'follow',
     // 中文输入法：随包带 AOSP 谷歌拼音输入法，开机后静默安装并启用。
     // 系统镜像只带 LatinIME（英文键盘），不装就打不了中文。
     chineseIme: true,
@@ -117,7 +135,7 @@ const DEFAULT_SETTINGS = {
     keymaps: {},
   },
   runtime: {
-    dir: '',                 // 空 = %APPDATA%\apkstart\runtime
+    dir: '',                 // 空 = %APPDATA%\zapkstart\runtime
     qemuUrl: '',             // 手动指定 QEMU 安装包地址
     isoUrl: '',              // 手动指定系统镜像地址
     isoPath: '',             // 系统镜像（ISO）路径
@@ -139,18 +157,23 @@ const DEFAULT_SETTINGS = {
     mirrorPrefix: '',
     // 下载并发数：分块下载的连接数。默认 8，弱网/被限速时可调到 16。
     downloadConnections: 8,
-    // 更新/下载的源选择。auto = 同时问 GitHub 与 Gitee、并对每个下载地址实测
-    // 128KB 速度，谁快用谁；也可以强制只走某一边（企业网络只放行一个域名时有用）。
-    sourcePreference: 'auto',
+    // 更新/下载的源选择。zApkStart 只有 GitHub 一个发布源（Gitee 随 fork 移除），
+    // 字段保留是为了兼容旧 settings.json 的合并，读设置时会被强制写回 'github'。
+    sourcePreference: 'github',
     // 自动尝试公共 GitHub 加速镜像（ghfast / gh-proxy）。关掉后只用直连 + 自定义前缀。
     // 这两个是第三方服务，只是转发公开的 release 文件，不涉及账号信息。
     autoMirror: true,
-    // Gitee 的 releases 接口对公开仓库也要求 access_token（无 token 直接 404），
-    // 想用 Gitee 作为更新源就在这里填一个只读 token；留空则只用 GitHub + 镜像。
-    giteeToken: '',
+    // ARM64 主机的「试着用 x64 引擎（Windows 模拟）」显式开关。
+    // 默认 false：ARM64 上 doctor 会先给出能力说明，用户明确选择后才尝试。
+    allowEmulatedEngine: false,
   },
-  sharedDir: path.join(os.homedir(), 'ApkStartShared'),
-  deviceSharedDir: '/sdcard/ApkStartShared',
+  ui: {
+    // 界面语言：auto = 跟随操作系统（希伯来语系统 → 希伯来语界面 + RTL）。
+    // 可选 'auto' | 'en' | 'he' | 'zh-CN'。注意与 engine.locale（安卓 guest 语言）是两回事。
+    locale: 'auto',
+  },
+  sharedDir: path.join(os.homedir(), brand.SHARED_DIRNAME),
+  deviceSharedDir: brand.DEVICE_SHARED_DIR,
   autoConnect: true,
   createShortcutOnInstall: true,
   createStartMenuShortcut: true, // 开始菜单快捷方式 = 让 Windows 搜索能搜到应用
@@ -271,16 +294,21 @@ const store = {
   getSettings() {
     const s = deepMerge(DEFAULT_SETTINGS, readJson(SETTINGS_FILE, {}));
     /**
-     * 0.5.6 起没有第三方底座了：老配置里的 mode=mumu / fydeos / attach，
+     * 引擎模式精确匹配白名单：builtin 之外只放行 'wsa'（用户显式选择 + 注册表
+     * 还要再核探测，见 backends/index.js）。老配置里的 mode=mumu / fydeos / attach，
      * 或者手改出来的任何其它值，一律当 builtin 处理，并把残留的第三方字段删掉。
      *
      * 只在读的时候改内存里的对象，不立刻回写磁盘：设置文件是用户的，等他下次
      * 保存设置时自然落盘；这样「打开一次 ApkStart 就改了他的 settings.json」不会发生。
      */
-    s.engine.mode = 'builtin';
+    if (!ENGINE_MODES.has(s.engine.mode)) s.engine.mode = 'builtin';
     for (const k of ['mumuPath', 'mumuIndex', 'mumuRenderProfile', 'mumuMemoryGB', 'mumuCores', 'fydeosHost']) {
       delete s.engine[k];
     }
+    // zApkStart 只有 GitHub 一个发布源：旧配置里的 gitee 偏好/token 一律清掉。
+    // 删除字段而不是保留死配置，避免设置页出现永远无效的输入框。
+    s.runtime.sourcePreference = 'github';
+    delete s.runtime.giteeToken;
     // 旧版本默认无头运行：应用进程能起来但屏幕上没有窗口，等效于「打不开」。
     // 无条件迁移到带窗口模式，且不再允许通过旧配置把它关掉。
     s.engine.headless = false;
@@ -371,6 +399,8 @@ const store = {
 
   ensureDirs,
   DEFAULT_SETTINGS,
+  DEFAULT_WSA_PORT,
+  ENGINE_MODES,
 };
 
 module.exports = store;

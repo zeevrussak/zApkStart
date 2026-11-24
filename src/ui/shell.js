@@ -1,7 +1,32 @@
 'use strict';
-/* 应用窗口标题栏：只有 旋转 / 最小化 / 最大化 / 关闭，其余设置都在 ApkStart 主界面 */
-const api = window.apkstart;
+/* 应用窗口标题栏：只有 旋转 / 最小化 / 最大化 / 关闭，其余设置都在 zApkStart 主界面 */
+const api = window.zapkstart;
 const $ = (id) => document.getElementById(id);
+
+/* ---------------- 界面语言（i18n） ---------------- */
+let t = (key) => key;
+function applyStatic() {
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
+}
+async function bootstrapI18n() {
+  try {
+    const st = await api.i18n.state();
+    t = st.t;
+    document.documentElement.dir = st.dir;
+    document.documentElement.lang = st.locale;
+    if (api.i18n && typeof api.i18n.onChange === 'function') {
+      api.i18n.onChange((s) => {
+        if (!s) return;
+        t = s.t;
+        document.documentElement.dir = s.dir;
+        document.documentElement.lang = s.locale;
+        applyStatic();
+      });
+    }
+  } catch (_) { /* 桥不可用时保持兜底 */ }
+  applyStatic();
+}
 
 const btn = {
   rotate: $('btnRotate'),
@@ -33,7 +58,7 @@ window.addEventListener('keydown', (e) => {
 
 function applyState(s) {
   if (!s) return;
-  $('appName').textContent = s.label || '应用';
+  $('appName').textContent = s.label || t('ui.shell_fallback_app');
   $('bootName').textContent = s.label || '';
   const icon = s.iconUrl || '';
   // 品牌兜底图：应用图标解不出来（ICO/WebP 解码失败、file URL 被 CSP 拦）时
@@ -62,3 +87,4 @@ function applyState(s) {
 
 api.shell.onState(applyState);
 api.shell.state().then(applyState).catch(() => {});
+bootstrapI18n();

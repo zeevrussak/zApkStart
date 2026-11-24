@@ -12,7 +12,10 @@ const net = require('net');
 // 隔离测试数据目录，避免污染真实用户配置
 const TMP = path.join(os.tmpdir(), `apkstart-test-${Date.now()}`);
 process.env.APPDATA = TMP;
-fs.mkdirSync(path.join(TMP, 'apkstart'), { recursive: true });
+// zApkStart 的数据目录是 %APPDATA%\zapkstart（store.js 按 brand 解析）
+fs.mkdirSync(path.join(TMP, 'zapkstart'), { recursive: true });
+// adb/engine 文案断言钉住中文（i18n 默认 auto 会跟随本机语言）
+require('../src/core/i18n').setActiveT('zh-CN', '');
 
 let passed = 0;
 let failed = 0;
@@ -229,16 +232,19 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || '断言失败'); 
     assert(/^image\.sysdir\.1=\S*system-images\//m.test(cfg), 'image.sysdir.1 缺失');
   });
 
-  await test('安装失败原因翻译：NO_MATCHING_ABIS 给出中文指引', async () => {
+  await test('安装失败原因翻译：NO_MATCHING_ABIS 给出中文指引（错误码结构 + message）', async () => {
     const { friendlyInstallError } = require('../src/core/adb');
     const out = friendlyInstallError(
       'Performing Streamed Install\nadb.exe: failed to install x.apk: '
       + 'Failure [INSTALL_FAILED_NO_MATCHING_ABIS: Failed to extract native libraries, res=-113]',
     );
-    assert(out.includes('ARM 原生库'), `应解释 ARM 原生库问题：${out}`);
-    assert(out.includes('INSTALL_FAILED_NO_MATCHING_ABIS'), '应保留原始错误码');
+    // zApkStart 错误码契约：{ code, params, raw, message } —— 断言走 message
+    const text = typeof out === 'string' ? out : out.message;
+    assert(text.includes('ARM 原生库'), `应解释 ARM 原生库问题：${text}`);
+    assert(text.includes('INSTALL_FAILED_NO_MATCHING_ABIS'), '应保留原始错误码');
     const other = friendlyInstallError('Failure [INSTALL_FAILED_INVALID_APK: x]');
-    assert(other.includes('损坏') || other.includes('不完整'), `未知错误也应可读：${other}`);
+    const otherText = typeof other === 'string' ? other : other.message;
+    assert(otherText.includes('损坏') || otherText.includes('不完整'), `未知错误也应可读：${otherText}`);
   });
 
   await test('镜像校验：区分有效 ISO9660 / 损坏 / 未下完', async () => {
@@ -389,7 +395,8 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || '断言失败'); 
   console.log('\n[provision.js 兼容镜像 / 完整版]');
 
   await test('playImageInfo 校验 API 34 兼容镜像完整性', async () => {
-    const dir = path.join(TMP, 'apkstart', 'runtime', 'system-images', 'android-34', 'google_apis_playstore', 'x86_64');
+    // zApkStart：数据目录名来自 brand（zapkstart），与运行时目录推导保持一致
+    const dir = path.join(TMP, 'zapkstart', 'runtime', 'system-images', 'android-34', 'google_apis_playstore', 'x86_64');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'kernel-ranchu'), 'k');
     const prov = new Provisioner(path.join(__dirname, '..'));
@@ -400,13 +407,17 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || '断言失败'); 
     assert(info.ok && info.api === '34' && info.tag === 'google_apis_playstore', `应判定 API 34 兼容镜像就绪：${JSON.stringify(info)}`);
   });
 
-  await test('完整版品牌资产与抖音联系入口就位', async () => {
+  await test('完整版运行时组装脚本 + 关于区不含上游社交资产、保留上游署名', async () => {
     const root = path.join(__dirname, '..');
-    assert(fs.existsSync(path.join(root, 'src', 'ui', 'assets', 'douyin-qr.jpg')), '缺少抖音二维码图片');
     assert(fs.existsSync(path.join(root, 'build', 'fetch-runtime.js')), '缺少完整版运行时组装脚本');
+    // zApkStart fork：上游作者的社交二维码（微信/抖音）随 fork 移除，不得再打包
+    assert(!fs.existsSync(path.join(root, 'src', 'ui', 'assets', 'douyin-qr.jpg')), '抖音二维码应已移除');
+    assert(!fs.existsSync(path.join(root, 'src', 'ui', 'assets', 'wechat-qr.jpg')), '微信二维码应已移除');
     const html = fs.readFileSync(path.join(root, 'src', 'ui', 'index.html'), 'utf8');
-    assert(html.includes('douyin-qr.jpg'), '关于区未引用抖音二维码');
-    assert(html.includes('https://v.douyin.com/9TIIxVCANig/'), '缺少抖音主页链接');
+    assert(!html.includes('douyin-qr.jpg') && !html.includes('wechat-qr.jpg'), '关于区不得再引用社交二维码');
+    assert(!/v\.douyin\.com/.test(html), '关于区不得再链接抖音主页');
+    // 上游署名（MIT 归属）必须保留
+    assert(html.includes('https://github.com/RoutineMiku/apkstart'), '关于区应保留上游 ApkStart 的署名链接');
   });
 
   console.log(results.join('\n'));

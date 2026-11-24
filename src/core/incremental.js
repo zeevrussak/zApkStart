@@ -16,6 +16,7 @@
  */
 const path = require('path');
 const { sha256File } = require('./download');
+const { t } = require('./i18n');
 
 const APP_DIR = 'resources/app';
 const MANIFEST_RE = /-manifest\.json$/i;
@@ -29,12 +30,12 @@ function norm(p) {
 /** 清单格式校验。宁可判为「不可用」退回完整包，也不要拿一份残缺清单去覆盖文件。 */
 function parseManifest(text) {
   let m;
-  try { m = JSON.parse(text); } catch (_) { throw new Error('增量清单不是合法 JSON'); }
-  if (!m || m.schema !== 1) throw new Error('增量清单版本不支持');
-  if (!m.version || !m.electronVersion) throw new Error('增量清单缺少版本信息');
+  try { m = JSON.parse(text); } catch (_) { throw new Error(t('incremental.manifest_invalid_json')); }
+  if (!m || m.schema !== 1) throw new Error(t('incremental.manifest_schema_unsupported'));
+  if (!m.version || !m.electronVersion) throw new Error(t('incremental.manifest_missing_versions'));
   if (!m.app || !m.app.asset || !m.app.sha256 || !m.app.files
       || typeof m.app.files !== 'object' || !Object.keys(m.app.files).length) {
-    throw new Error('增量清单缺少代码包信息');
+    throw new Error(t('incremental.manifest_missing_app'));
   }
   return m;
 }
@@ -50,14 +51,14 @@ function isAuxAsset(name) {
  * 只看不依赖网络的条件：安装形态、Electron 版本、清单声明的代码包在不在资产里。
  */
 function chooseMode({ flavor, electronVersion, manifest, assets = [], current = '' }) {
-  if (flavor !== 'portable') return { mode: 'full', reason: '安装版走完整安装包' };
-  if (!manifest) return { mode: 'full', reason: '没有增量清单' };
+  if (flavor !== 'portable') return { mode: 'full', reason: t('incremental.reason_setup_flavor') };
+  if (!manifest) return { mode: 'full', reason: t('incremental.reason_no_manifest') };
   if (!electronVersion || String(manifest.electronVersion) !== String(electronVersion)) {
-    return { mode: 'full', reason: 'Electron 版本不同，需要完整包' };
+    return { mode: 'full', reason: t('incremental.reason_electron_mismatch') };
   }
   const appAsset = assets.find((a) => a && a.name === manifest.app.asset);
-  if (!appAsset) return { mode: 'full', reason: '增量代码包未发布' };
-  return { mode: 'app', appAsset, reason: '代码层增量更新' };
+  if (!appAsset) return { mode: 'full', reason: t('incremental.reason_app_pack_missing') };
+  return { mode: 'app', appAsset, reason: t('incremental.reason_incremental') };
 }
 
 /**

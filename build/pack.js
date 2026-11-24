@@ -1,17 +1,22 @@
 'use strict';
 /**
- * 便携版打包：产出 dist/ApkStart-win64-portable/
- *   ApkStart.exe（electron.exe 改名 + 写入图标/版本资源）+ resources/app（本应用源码）
+ * 便携版打包：产出 dist/zApkStart-win64-portable/
+ *   zApkStart.exe（electron.exe 改名 + 写入图标/版本资源）+ resources/app（本应用源码）
  * 无需安装器，解压即用。
  *
  * --full（或 APKSTART_PACK_FULL=1）时产出「完整版」：
  *   额外把 build/runtime 复制进 resources/runtime，解压即用、首次启动不需要下载任何东西。
- *   输出目录默认 dist/ApkStart-v<版本>-win64-full，不会覆盖轻量版。
+ *   输出目录默认 dist/zApkStart-v<版本>-win64-full，不会覆盖轻量版。
+ *
+ * 注意：本脚本只产 x64 便携包（ELECTRON_DIST 取的是本机 node_modules 里的 x64
+ * Electron）。ARM64 产物走 electron-builder --arm64（它自己拉对应架构的 dist），
+ * 不要在这里「顺手支持」——拿错 dist 会打出跑不起来的包。
  */
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { assertStandalone } = require('./guard-standalone');
+const brand = require('../src/core/brand');
 
 const ROOT = path.join(__dirname, '..');
 const PKG = require(path.join(ROOT, 'package.json'));
@@ -19,7 +24,7 @@ const FULL = process.argv.includes('--full') || process.env.APKSTART_PACK_FULL =
 // 允许指定输出目录（用于目标目录被正在运行的实例占用时，先构建到别处再替换）
 let OUT = process.env.APKSTART_PACK_OUT
   ? path.resolve(process.env.APKSTART_PACK_OUT)
-  : path.join(ROOT, 'dist', FULL ? `ApkStart-v${PKG.version}-win64-full` : 'ApkStart-win64-portable');
+  : path.join(ROOT, 'dist', FULL ? `${brand.PRODUCT}-v${PKG.version}-win64-full` : `${brand.PRODUCT}-win64-portable`);
 const ELECTRON_DIST = path.join(ROOT, 'node_modules', 'electron', 'dist');
 
 // Windows 上 fs.cpSync 复制「大量小文件 + 大镜像」的目录树时会偶发
@@ -50,7 +55,7 @@ if (fs.existsSync(OUT)) {
   } catch (_) {
     // 某些环境（杀软 / 搜索索引 / 资源管理器）会长时间持有目录句柄，
     // 整目录改名必然 EBUSY；这时退到带版本号的目录，产物一样可用且不再重名。
-    OUT = path.join(ROOT, 'dist', `ApkStart-v${require(path.join(ROOT, 'package.json')).version}-win64-portable`);
+    OUT = path.join(ROOT, 'dist', `${brand.PRODUCT}-v${require(path.join(ROOT, 'package.json')).version}-win64-portable`);
     console.log('旧目录被占用，改输出到 →', OUT);
   }
 }
@@ -61,9 +66,11 @@ console.log('复制 Electron 运行时…');
 copy(ELECTRON_DIST, OUT);
 fs.rmSync(path.join(OUT, 'resources', 'default_app.asar'), { force: true });
 
-// 1.1 语言包瘦身：Electron 自带 55 种语言，合计 41MB，我们只用中文界面。
-//     只留 zh-CN / zh-TW / en-US，其余删掉（-39MB，等于整包小 15%）。
-const KEEP_LOCALES = new Set(['zh-CN.pak', 'zh-TW.pak', 'en-US.pak']);
+// 1.1 语言包瘦身：Electron 自带 55 种语言，合计 41MB，我们只用这些界面语言。
+//     留 zh-CN / zh-TW / en-US / he（希伯来语，zApkStart 新增），其余删掉。
+//     注意：electron-builder.yml 的 electronLanguages 是**另一份**过滤清单，
+//     两处必须同步改（前者管便携包，后者管 NSIS/MSIX 安装包）。
+const KEEP_LOCALES = new Set(['zh-CN.pak', 'zh-TW.pak', 'en-US.pak', 'he.pak']);
 let localeSaved = 0;
 try {
   const locDir = path.join(OUT, 'locales');
@@ -205,7 +212,7 @@ if (FULL) {
 assertStandalone(path.join(OUT, 'resources'), { label: '便携版 resources' });
 
 // 4. 改名主程序
-const exePath = path.join(OUT, 'ApkStart.exe');
+const exePath = path.join(OUT, brand.EXE_NAME);
 fs.renameSync(path.join(OUT, 'electron.exe'), exePath);
 
 /**
@@ -237,19 +244,23 @@ function embedExeMeta(exe) {
   const args = [
     exe,
     '--set-icon', ico,
-    // 四段式文件版本（和 MSIX 的口径一致），产品版本用三段式
-    '--set-file-version', `${PKG.version}.0`,
-    '--set-product-version', PKG.version,
-    '--set-version-string', 'ProductName', 'ApkStart',
-    '--set-version-string', 'FileDescription', 'ApkStart 安卓应用运行器',
-    '--set-version-string', 'CompanyName', PKG.author || 'RoutineMiku',
-    '--set-version-string', 'LegalCopyright', 'Copyright (c) 2026 ApkStart',
-    '--set-version-string', 'OriginalFilename', 'ApkStart.exe',
-    '--set-version-string', 'InternalName', 'ApkStart',
+    // 四段式文件版本（和 MSIX 的口径一致），产品版本用三段式。
+    // fork 版本带 semver prerelease（0.6.4-zk.1）—— rcedit 的 VERSIONINFO 只认
+    // 纯数字四段，所以这里统一走 msixVersion 的「数值块提取」口径。
+    '--set-file-version', require('./msix').msixVersion(PKG.version),
+    '--set-product-version', require('./msix').msixVersion(PKG.version).split('.').slice(0, 3).join('.'),
+    '--set-version-string', 'ProductName', brand.PRODUCT,
+    '--set-version-string', 'FileDescription', `${brand.PRODUCT} Android app runner`,
+    '--set-version-string', 'CompanyName', PKG.author || brand.PRODUCT,
+    // MIT 双重署名：上游版权必须保留（LICENSE 原文），fork 修改另起一行
+    '--set-version-string', 'LegalCopyright',
+    'Copyright (c) 2026 ApkStart contributors, (c) 2026 zApkStart contributors',
+    '--set-version-string', 'OriginalFilename', brand.EXE_NAME,
+    '--set-version-string', 'InternalName', brand.PRODUCT,
   ];
   try {
     execFileSync(rcedit, args, { stdio: 'pipe', windowsHide: true });
-    console.log(`  exe 图标/版本已写入（${PKG.version}，FileDescription=ApkStart 安卓应用运行器）`);
+    console.log(`  exe 图标/版本已写入（${PKG.version}，FileDescription=${brand.PRODUCT} Android app runner）`);
     return true;
   } catch (e) {
     console.warn(`  [!] rcedit 失败：${e.message}`);
@@ -262,7 +273,7 @@ embedExeMeta(exePath);
 const pkg = PKG;
 const fullNote = FULL ? '完整版（内置运行时，装完不联网）' : '轻量版（首次启动下载运行时）';
 fs.writeFileSync(path.join(OUT, 'VERSION.txt'),
-  `ApkStart ${pkg.version}\n${fullNote}\n构建时间：${new Date().toLocaleString('zh-CN')}\n`);
+  `${brand.PRODUCT} ${pkg.version}\n${fullNote}\n构建时间：${new Date().toISOString()}\n`);
 
 // 6. 体积报告：每次打包都打印，避免以后又悄悄变胖
 function dirSize(dir) {
@@ -281,5 +292,5 @@ console.log(
   + `冗余运行库省了 ${(pruneSaved / 1048576).toFixed(1)} MB）。`,
 );
 console.log('压缩：node build/zip.js ' + path.relative(ROOT, OUT) + ' <输出.zip>');
-console.log(`运行 ${path.join(OUT, 'ApkStart.exe')} 即可使用。`);
+console.log(`运行 ${path.join(OUT, brand.EXE_NAME)} 即可使用。`);
 if (!FULL) console.log('想要「一次下载、装完不联网」的完整版：node build/pack.js --full');

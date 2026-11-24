@@ -1,0 +1,25 @@
+'use strict';
+// download / en — English catalog for src/core/download.js (contract: src/core/i18n.js)
+module.exports = {
+  too_many_redirects: 'too many redirects',
+  connect_timeout: 'connection timed out',
+  resume_unverifiable: 'cannot verify the resumed file; the server returned HTTP 416',
+  http_failed: 'download failed with HTTP {status}: {url}',
+  resume_range_mismatch: 'the server returned a mismatched resume range',
+  stalled_no_data: 'connection stalled (no data for a long time)',
+  stalled_timeout: 'connection stalled (no-data timeout)',
+  cancelled: 'cancelled',
+  connection_interrupted: 'connection interrupted',
+  sha_mismatch: 'verification failed: expected {expected}… got {actual}…',
+  chunk_request_rejected: 'chunk request rejected with HTTP {status}',
+  chunk_rejected: 'chunk rejected with HTTP {status}',
+  chunk_range_mismatch: 'the server returned a mismatched chunk range',
+  chunk_overflow: 'chunk response exceeded the requested range',
+  chunk_incomplete: 'chunk was not fully returned',
+  chunk_failed: 'chunk download failed ({start}-{end}): {reason}',
+  chunk_failed_multi: 'chunk failed ({start}-{end}): {reason}',
+  incomplete: 'download incomplete: {size}/{total} bytes',
+  all_sources_failed: 'all download sources failed:\n{errors}',
+  no_urls: 'no download URLs available',
+  slow_source_rotated: 'source too slow ({speed} KB/s); rotating to the next source',
+};

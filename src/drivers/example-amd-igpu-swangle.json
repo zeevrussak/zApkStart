@@ -3,7 +3,7 @@
   "id": "example-amd-igpu-swangle",
   "name": "AMD 核显 · 改用 swangle 渲染（示例）",
   "version": "1.0.0",
-  "author": "ApkStart",
+  "author": "zApkStart",
   "description": "部分 AMD 核显 + 老驱动下，-gpu host 能通过 emulator 自检，但 guest 起来十几秒后进程直接崩溃（日志里只有 AEHD is operational）。把渲染后端固定成 swangle 可以绕过，代价是帧率略低。",
   "enabled": false,
   "priority": 0,

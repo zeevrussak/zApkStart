@@ -47,7 +47,7 @@ async function step(name, fn) {
 }
 
 (async () => {
-  console.log('\nApkStart 运行时自检');
+  console.log('\nzApkStart 运行时自检');
   console.log(`设备：${SERIAL}`);
   console.log('─'.repeat(64));
 
@@ -114,14 +114,14 @@ async function step(name, fn) {
       const localDir = store.getSettings().sharedDir;
       fs.mkdirSync(localDir, { recursive: true });
       const probe = path.join(localDir, `selftest-${Date.now()}.txt`);
-      const payload = `apkstart selftest ${new Date().toISOString()}`;
+      const payload = `zapkstart selftest ${new Date().toISOString()}`;
       fs.writeFileSync(probe, payload);
 
       const up = await sharer.sync();
       if (up.errors && up.errors.length) throw new Error(up.errors[0]);
       const remote = `${store.getSettings().deviceSharedDir}/${path.basename(probe)}`;
       const back = await client.shell(`cat "${remote}" 2>/dev/null`);
-      if (!String(back).includes('apkstart selftest')) throw new Error('本机 → 设备 未同步');
+      if (!String(back).includes('zapkstart selftest')) throw new Error('本机 → 设备 未同步');
 
       const reverse = path.join(localDir, `selftest-from-device-${Date.now()}.txt`);
       await client.shell(`echo device-side > "${store.getSettings().deviceSharedDir}/${path.basename(reverse)}"`);

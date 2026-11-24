@@ -7,6 +7,7 @@
  * 点通知直接回到对应的应用窗口。
  */
 const { Notification, nativeImage } = require('electron');
+const { t } = require('./i18n');
 
 const POLL_MS = 2500;
 
@@ -119,10 +120,10 @@ class NotifyBridge {
     try {
       if (!Notification.isSupported()) return;
       const label = this.getAppLabel ? this.getAppLabel(n.pkg) : n.pkg;
-      const body = [n.title, n.text].filter(Boolean).join(' · ') || '新通知';
+      const body = [n.title, n.text].filter(Boolean).join(' · ') || t('notify.new_notification');
       const iconPath = this.getAppIcon ? this.getAppIcon(n.pkg) : '';
       const note = new Notification({
-        title: label || '安卓应用',
+        title: label || t('notify.android_app'),
         body: body.slice(0, 260),
         silent: false,
         icon: iconPath ? nativeImage.createFromPath(iconPath) : undefined,

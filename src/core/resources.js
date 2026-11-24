@@ -14,6 +14,9 @@
  *   3. 任何自动值都必须能算得出来：拿不到宿主信息就退回保守默认，不能返回 NaN。
  */
 
+const { t } = require('./i18n');
+const brand = require('./brand');
+
 const DEFAULT_STEP_MB = 512;
 const MIN_MEM_MB = 1024;
 /** 给宿主（Windows + 前台程序）留的比例 */
@@ -194,8 +197,11 @@ function diskVerdict(freeMB, requiredMB) {
     ok: false,
     freeMB: free,
     requiredMB: need,
-    message: `磁盘空间不足：还要约 ${Math.ceil(need / 1024)} GB，但 ApkStart 运行时所在磁盘只剩 ${(free / 1024).toFixed(1)} GB。`
-      + '请在设置里把运行时目录挪到空间更大的分区，或清理后重试。',
+    message: t('resources.disk_insufficient', {
+      need: Math.ceil(need / 1024),
+      free: (free / 1024).toFixed(1),
+      product: brand.PRODUCT,
+    }),
   };
 }
 

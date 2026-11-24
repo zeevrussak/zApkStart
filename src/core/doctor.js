@@ -17,11 +17,31 @@ const net = require('net');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const { memoryLimits } = require('./resources');
+const arch = require('./arch');
+const brand = require('./brand');
+const { t } = require('./i18n');
 
 const ASCII = /^[\x20-\x7e]*$/;
 const isAsciiPath = (p) => ASCII.test(String(p || ''));
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+let _machineArch = '';
+/**
+ * 机器真实架构的同步快照。hostInfo()/vcRedistOk()/diagnose() 都是同步函数，
+ * 不能 await arch.hostArch()：第一次调用按二进制架构占位并异步补一次探测
+ * （ARM64 宿主上 x64 进程的 process.arch 自报 x64，探测完成后更正为机器真相，
+ * 之后与 arch.hostArch() 的缓存一致）。探测失败时 arch.js 自己回落二进制架构。
+ */
+function machineArchSnapshot() {
+  if (!_machineArch) {
+    _machineArch = process.arch === 'arm64' ? 'arm64' : 'x64';
+    arch.hostArch().then((h) => { _machineArch = h; }).catch(() => {});
+  }
+  return _machineArch;
+}
+
+/** ARM64 宿主上 WHPX/AEHD 的修复建议是做不到的：统一口径见 doctor.arm64_accel_hint（与 preflight 一致） */
 
 /** 本机画像（毫秒级，只读） */
 function hostInfo() {
@@ -32,6 +52,9 @@ function hostInfo() {
   return {
     platform: process.platform,
     arch: process.arch,
+    // process.arch 是「二进制架构」（ARM64 宿主上的 x64 进程自报 x64）；
+    // machineArch 是「机器架构」真相（来自 arch.hostArch()），ARM64 判断一律用它。
+    machineArch: machineArchSnapshot(),
     totalMB,
     freeMB,
     cores,
@@ -309,13 +332,19 @@ function planVariants(profile) {
   const safeGpu = gpus.find((g) => /software|swiftshader/.test(g)) || firstGpu;
   const ordered = [firstGpu, ...gpus.filter((g) => g !== firstGpu && /swiftshader|swangle/.test(g))].slice(0, 2);
   for (const gpu of ordered) {
-    out.push({ ...profile, gpu, label: `${gpu} / ${profile.accel === 'auto' ? '硬件加速' : '软件模拟'}`, wipe: false, snapshot: true });
+    out.push({
+      ...profile,
+      gpu,
+      label: `${gpu} / ${profile.accel === 'auto' ? t('doctor.accel_hw') : t('doctor.accel_sw')}`,
+      wipe: false,
+      snapshot: true,
+    });
   }
   out.push({
     ...profile,
     gpu: safeGpu,
     accel: 'off',
-    label: '关闭加速的软件模拟（慢，但兼容性最好）',
+    label: t('doctor.variant_sw_off'),
     wipe: false,
     snapshot: false,
   });
@@ -326,7 +355,7 @@ function planVariants(profile) {
     memoryMB: 2048,
     cores: 2,
     dataMB: Math.min(profile.dataMB, 2048),
-    label: '保守冷启动（最小内存 + 清快照）',
+    label: t('doctor.variant_safe_cold'),
     // 这里**绝对不能** wipe：以前写的是 wipe:true，而磁盘写满时每次尝试都会失败，
     // 于是连续重试把用户已装的应用和存档一起「清快照 + 清数据」了 ——
     // 「磁盘满了，结果打开 ApkStart 应用全没了」就是这么发生的。
@@ -417,52 +446,51 @@ const RULES = [
     // 与 CPU、内存、镜像都无关（同机换 -gpu software 往往就能过）。
     // 必须排在 GPU_INIT 前面：崩溃日志里通常也带着渲染初始化信息，先判崩溃更准。
     re: /emulator exit 3221225477|exit code 3221225477|0xC0000005|STATUS_ACCESS_VIOLATION/i,
-    title: '渲染后端崩溃（0xC0000005 访问冲突）',
-    hint: '已自动改用更保守的渲染后端重试，并记住这个后端下次不再先试。'
-      + '若反复出现，请更新显卡驱动；或在设置 → 性能与资源里把画质调低、关闭远程桌面/虚拟机显卡直通后再试。',
+    titleKey: 'diag_access_violation_title',
+    hintKey: 'diag_access_violation_hint',
   },
   {
     code: 'GPU_INIT',
     // 只匹配「失败」语境：正常日志里也会出现 Vulkan/EGL/ANGLE 字样，不能误判为致命错误
     re: /Failed to initialize GL emulation|Could not initialize (OpenGL|emulated framebuffer)|Failed to create .*GLES|EGL_(BAD|NOT_INITIALIZED|CONTEXT_LOST)|Failed to (load|initialize) .*vulkan|vulkan.*(failed|error)|ANGLE.*(fail|error)/i,
-    title: '显卡渲染后端初始化失败',
-    hint: '已自动切换软件渲染重试。若仍失败，请更新显卡驱动，或关闭远程桌面/虚拟机显卡直通后再试。',
+    titleKey: 'diag_gpu_init_title',
+    hintKey: 'diag_gpu_init_hint',
   },
   {
     code: 'GPU_MODE',
     re: /Unknown option|invalid .*-gpu|Unrecognized .*gpu|Unsupported gpu/i,
-    title: '当前运行时不接受该 GPU 模式',
-    hint: '已自动按运行时版本挑选可用的 GPU 模式重试（老版本用 swiftshader_indirect，新版本用 software）。',
+    titleKey: 'diag_gpu_mode_title',
+    hintKey: 'diag_gpu_mode_hint',
   },
   {
     code: 'ACCEL',
     re: /x86_64 emulation currently requires hardware acceleration|acceleration.*not (installed|available|supported)|WHPX.*(not|failed)|AEHD.*(not|failed)|ERROR_ACCESS_DENIED|加速.*不可用/i,
-    title: '硬件加速不可用',
-    hint: '已自动回退软件模拟（首次启动会明显变慢）。想要流畅可用，请在「Windows 功能」勾选「虚拟机平台」，或安装 AEHD 驱动后重启。',
+    titleKey: 'diag_accel_title',
+    hintKey: 'diag_accel_hint',
   },
   {
     code: 'MEMORY',
     re: /Cannot allocate memory|not enough memory|commit charge|Failed to allocate|out of memory|内存不足/i,
-    title: '内存分配失败',
-    hint: '已自动下调分配给 Android 的内存与核心数。请关闭占内存的程序后重试。',
+    titleKey: 'diag_memory_title',
+    hintKey: 'diag_memory_hint',
   },
   {
     code: 'PORT_BUSY',
     re: /port.*(in use|busy)|Address already in use|bind.*failed|Failed to (setup|bind) .*console/i,
-    title: '模拟器端口被占用',
-    hint: '已自动换用空闲端口。若反复出现，请退出夜神/MuMu/蓝叠等模拟器，或重启电脑。',
+    titleKey: 'diag_port_busy_title',
+    hintKey: 'diag_port_busy_hint',
   },
   {
     code: 'AVD_LOCK',
     re: /already running|lock file|\.lock|AVD is in use|emulator is running/i,
-    title: '上次运行残留了锁文件',
-    hint: '已自动清理 AVD 锁文件并重新拉起。',
+    titleKey: 'diag_avd_lock_title',
+    hintKey: 'diag_avd_lock_hint',
   },
   {
     code: 'IMAGE',
     re: /system\.img.*(missing|not found|corrupt)|kernel-ranchu.*(missing|not found)|invalid magic|Failed to open .*\.img|APEX.*(fail|error|loop)|boot loop|verity.*fail/i,
-    title: '系统镜像缺失或损坏 / 与旧用户数据不兼容',
-    hint: '已自动用干净的用户数据重新开机。若仍失败，请在「运行时」里删除镜像后重新下载。',
+    titleKey: 'diag_image_title',
+    hintKey: 'diag_image_hint',
   },
   {
     code: 'DLL',
@@ -472,64 +500,75 @@ const RULES = [
     // VC++ 运行库确实缺失、杀毒隔离了运行时文件，三种都可能。原来一律断言
     // 「杀毒删了 / 缺 VC++」是照退出码静态猜的，会误导用户重装无用。
     // 真实缺哪个 DLL 要看 WER 的 FaultingModuleName；这里如实列为「待定位」。
-    title: '运行时依赖 DLL 加载失败（具体原因待定位）',
-    hint: '常见原因：商店版从只读目录启动子进程的路径限制、VC++ 运行库缺失、杀毒隔离了运行时文件。'
-      + '请打开内置手册 6.8 按步骤定位；不要只凭这一条就重装运行库。',
+    titleKey: 'diag_dll_title',
+    hintKey: 'diag_dll_hint',
   },
   {
     code: 'DISK_FULL',
     re: /No space left|disk full|not enough space|磁盘空间不足/i,
-    title: '磁盘空间不足，无法启动安卓',
-    hint: '请把运行时目录（设置 → 系统集成 → 运行时数据目录）改到空间充足的盘，'
-      + '或在设置里关掉「保留快速启动快照」/ 调小数据分区。安卓数据不会被自动清除。',
+    titleKey: 'diag_disk_full_title',
+    hintKey: 'diag_disk_full_hint',
   },
   {
     code: 'NON_ASCII',
     re: /Unicode|non-ASCII|路径.*(无效|找不到)|cannot find the path/i,
-    title: '安装路径含中文或特殊字符',
-    hint: '已自动改用 Windows 短路径。若仍失败，请把 ApkStart 移到纯英文目录（如 C:\\ApkStart）。',
+    titleKey: 'diag_non_ascii_title',
+    hintKey: 'diag_non_ascii_hint',
   },
   {
     // 上次被强制结束后 AVD 目录会留下 hardware-qemu.ini.lock / multiinstance.lock，
     // 模拟器一律拒绝启动，报出来的却是容易被误读成 CPU 问题的话。必须排在 CPU 规则前。
     code: 'AVD_LOCK',
     re: /Running multiple emulators with the same AVD|AVD .*is already running|hardware-qemu\.ini\.lock/i,
-    title: '上一次运行没有正常退出，残留了锁文件',
-    hint: 'ApkStart 会自动清掉残留锁并重试；若反复出现，请检查是否有别的模拟器正在用同一套运行时。',
+    titleKey: 'diag_avd_stale_title',
+    hintKey: 'diag_avd_stale_hint',
   },
   {
     code: 'CPU_FEATURE',
     re: /host doesn't support requested feature|CPUID.*not supported|unsupported CPU|missing.*(AVX|SSE4|xsave)/i,
-    title: 'CPU 缺少运行时要求的指令集',
-    hint: '这类提示在部分老 CPU 上只是警告、仍能开机；若确实起不来，请把「运行时」里的引擎更新到较旧兼容版本，或换一台支持 VT-x/AVX 的电脑。',
+    titleKey: 'diag_cpu_feature_title',
+    hintKey: 'diag_cpu_feature_hint',
   },
 
   {
     code: 'SNAPSHOT',
     re: /snapshot|Quick Boot|ram\.img|Saving state/i,
-    title: '快速启动快照损坏',
-    hint: '已自动丢弃旧快照走冷启动；下一次正常退出会重新生成快照。',
+    titleKey: 'diag_snapshot_title',
+    hintKey: 'diag_snapshot_hint',
   },
 ];
 
-/** 把日志翻译成 {code,title,hint}，供 UI 展示与自动重试决策 */
+/** 把日志翻译成 {code,title,hint}，供 UI 展示与自动重试决策（titleKey/hintKey 指向 doctor 目录） */
 function diagnose(lines) {
   const text = (Array.isArray(lines) ? lines.join('\n') : String(lines || '')).slice(-24000);
   for (const r of RULES) {
-    if (r.re.test(text)) return { code: r.code, title: r.title, hint: r.hint };
+    if (r.re.test(text)) {
+      // ARM64 宿主：AEHD / 「虚拟机平台」的修复建议是做不到的（Google 不提供 ARM64
+      // 引擎），按机器架构换成符合事实的提示，别把用户引去开永远没用的功能。
+      if (r.code === 'ACCEL' && machineArchSnapshot() === 'arm64') {
+        return { code: r.code, title: t(`doctor.${r.titleKey}`), hint: t('doctor.arm64_accel_hint') };
+      }
+      return { code: r.code, title: t(`doctor.${r.titleKey}`), hint: t(`doctor.${r.hintKey}`) };
+    }
   }
   return {
     code: 'UNKNOWN',
-    title: '运行时未能完成开机',
-    hint: '已自动按多种参数组合重试。可点「导出诊断报告」把日志发给作者定位。',
+    title: t('doctor.diag_unknown_title'),
+    hint: t('doctor.diag_unknown_hint'),
   };
 }
 
 /** 人类可读的一行摘要，放在设置页让高级用户知道自动选了什么 */
 function describeProfile(p) {
-  return `自动：${(p.memoryMB / 1024).toFixed(1)}GB 内存 · ${p.cores} 核 · ${p.gpu} 渲染 · `
-    + `${p.accelOk ? '硬件加速' : '软件模拟'} · ${p.snapshot ? '按需快照' : '冷启动'}`
-    + `${p.lite ? ' · 轻量容器' : ''} · 端口 ${p.port}`;
+  return t('doctor.profile_summary', {
+    mem: (p.memoryMB / 1024).toFixed(1),
+    cores: p.cores,
+    gpu: p.gpu,
+    accel: p.accelOk ? t('doctor.accel_hw') : t('doctor.accel_sw'),
+    snap: p.snapshot ? t('doctor.snap_on') : t('doctor.snap_off'),
+    lite: p.lite ? t('doctor.profile_lite') : '',
+    port: p.port,
+  });
 }
 
 /** 导出诊断报告（纯文本，便于发邮件/贴 issue） */
@@ -539,24 +578,24 @@ function writeReport({ dataDir, profile, logLines = [], extra = {} }) {
   const file = path.join(dir, `diagnostic-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
   const d = diagnose(logLines);
   const body = [
-    'ApkStart 诊断报告',
-    `生成时间：${new Date().toLocaleString()}`,
+    t('doctor.report_title', { product: brand.PRODUCT }),
+    t('doctor.report_generated_at', { time: new Date().toLocaleString() }),
     '',
-    '== 本机 ==',
+    t('doctor.report_section_host'),
     JSON.stringify(hostInfo(), null, 2),
     '',
-    '== 自动配置 ==',
+    t('doctor.report_section_profile'),
     JSON.stringify(profile || {}, null, 2),
     describeProfile(profile || chooseProfile()),
     '',
-    '== 诊断 ==',
+    t('doctor.report_section_diag'),
     `${d.code}：${d.title}`,
     d.hint,
     '',
-    '== 附加信息 ==',
+    t('doctor.report_section_extra'),
     JSON.stringify(extra, null, 2),
     '',
-    '== 运行时日志（末尾 300 行）==',
+    t('doctor.report_section_log'),
     ...(Array.isArray(logLines) ? logLines.slice(-300) : String(logLines || '').split('\n')),
   ].join('\n');
   fs.writeFileSync(file, body, 'utf8');
@@ -580,13 +619,20 @@ function vcRedistOk() {
       && fs.existsSync(path.join(sys, 'vcruntime140.dll'))) return true;
   } catch (_) { /* 走注册表兜底 */ }
 
-  const key = 'HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64';
-  for (const k of [key, key.replace('SOFTWARE\\', 'SOFTWARE\\WOW6432Node\\')]) {
-    try {
-      const out = execFileSync('reg', ['query', k, '/v', 'Installed'],
-        { encoding: 'utf8', windowsHide: true, timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] });
-      if (/Installed\s+REG_DWORD\s+0x1/i.test(out)) return true;
-    } catch (_) { /* 键不存在 = 没装 */ }
+  // 注册表兜底按「机器架构」列要查的运行库：
+  //   - x64 机器：只查 x64（行为与以前完全一致）；
+  //   - ARM64 机器：x64 键**保留**（x64 引擎在 Windows 模拟下同样依赖 x64 运行库），
+  //     再加 arm64 键（原生组件依赖它）。任一装了即算就绪。
+  const abis = machineArchSnapshot() === 'arm64' ? ['x64', 'arm64'] : ['x64'];
+  for (const abi of abis) {
+    const key = `HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\${abi}`;
+    for (const k of [key, key.replace('SOFTWARE\\', 'SOFTWARE\\WOW6432Node\\')]) {
+      try {
+        const out = execFileSync('reg', ['query', k, '/v', 'Installed'],
+          { encoding: 'utf8', windowsHide: true, timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] });
+        if (/Installed\s+REG_DWORD\s+0x1/i.test(out)) return true;
+      } catch (_) { /* 键不存在 = 没装 */ }
+    }
   }
   return false;
 }

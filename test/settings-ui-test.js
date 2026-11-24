@@ -228,7 +228,7 @@ app.whenReady().then(async () => {
   step('清除搜索后回到当前分类', afterClear.length > 0 && afterClear.every((c) => c === 'diag'), `可见：${afterClear.join(',')}`);
 
   console.log('\n[设置页 · 记忆分类]');
-  const remembered = await evalJs(`localStorage.getItem('apkstart.settings.cat')`);
+  const remembered = await evalJs(`localStorage.getItem('zapkstart.settings.cat')`);
   step('上次停留的分类被记住了', remembered === 'diag', `记住了：${remembered}`);
 
   console.log('\n[设置页 · 渲染无异常]');

@@ -40,3 +40,43 @@ jobs:
           $out = & .\test\pointer-hook-logic.ps1
           $out | ForEach-Object { Write-Host $_ }
           if (-not ($out -contains 'POINTER_HOOK_LOGIC_OK')) { exit 1 }
+
+  arm64:
+    name: ARM64 交叉编译冒烟（x64 runner）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # electron-builder 自己拉 win32-arm64 的 Electron dist；extraResources 的
+      # build/runtime 在 CI 上不存在，arm64 包本来就不带运行时 —— 放占位文件
+      # 避免「源目录缺失」直接失败（与 release.yml 的 arm64 作业同一套路）。
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 占位运行时目录（arm64 包不带运行时）
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "build\runtime" | Out-Null
+          Set-Content -Path "build\runtime\ARM64-NO-RUNTIME.txt" `
+            -Value "zApkStart arm64 packages ship without the x64 runtime."
+
+      - name: 构建 arm64 未打包目录（--dir）
+        run: npx electron-builder --win --dir --arm64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      # PE 架构门：Machine 必须是 0xAA64（ARM64）。防止 Electron dist 拉错架构
+      # 还悄悄通过 CI —— 这种错只有用户在 ARM64 机器上跑不起来时才会暴露。
+      - name: PE 架构门（Machine == ARM64）
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "dist/*.exe", "dist/*/zApkStart.exe", "dist/win-unpaired/zApkStart.exe", "dist/win-unpacked/zApkStart.exe" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $exe) { Write-Error "未找到 arm64 产物 zApkStart.exe（--dir 输出）"; exit 1 }
+          node scripts/check-pe-arch.js $exe.FullName --expect arm64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

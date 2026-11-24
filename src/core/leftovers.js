@@ -16,8 +16,11 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const brand = require('./brand');
+const { t } = require('./i18n');
 
-const EXE = 'ApkStart.exe';
+const EXE = brand.EXE_NAME;
+const PRODUCT = brand.PRODUCT;
 
 function dirSize(p) {
   let n = 0;
@@ -87,7 +90,7 @@ function rootsFromShortcuts() {
   for (const h of homes) {
     linkDirs.push(path.join(h, 'Desktop'));
     linkDirs.push(path.join(h, 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs'));
-    linkDirs.push(path.join(h, 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'ApkStart'));
+    linkDirs.push(path.join(h, 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', PRODUCT));
   }
   for (const d of linkDirs) {
     let list = [];
@@ -101,13 +104,14 @@ function rootsFromShortcuts() {
           const m = /^Exec=(.+)$/m.exec(txt);
           if (m) {
             const exePath = m[1].trim().replace(/^"|"$/g, '').split(/\s+/)[0];
-            if (exePath && /[\\/]ApkStart(\.exe)?$/i.test(exePath)) dirs.add(path.dirname(exePath));
+            if (exePath && /[\\/](?:zApkStart|ApkStart)(\.exe)?$/i.test(exePath)) dirs.add(path.dirname(exePath));
           }
         } else {
-          // .lnk 是二进制，但目标路径以可读形式内嵌，直接扫字节里的 ApkStart*.exe
+          // .lnk 是二进制，但目标路径以可读形式内嵌，直接扫字节里的 zApkStart*.exe
+          // （同时认上游 ApkStart*.exe：用户从上游换装过来时，那些旧目录也该被清掉）
           const buf = fs.readFileSync(full);
           const s = buf.toString('latin1');
-          const re = /[A-Za-z]:\\[^\x00\x01-\x1f]*?ApkStart(?:-[^\x00\x01-\x1f]*)?[\\/]?ApkStart\.exe|[A-Za-z]:\\[^\x00\x01-\x1f]*?ApkStart\.exe/gi;
+          const re = /[A-Za-z]:\\[^\x00\x01-\x1f]*?(?:zApkStart|ApkStart)(?:-[^\x00\x01-\x1f]*)?[\\/]?(?:zApkStart|ApkStart)\.exe|[A-Za-z]:\\[^\x00\x01-\x1f]*?(?:zApkStart|ApkStart)\.exe/gi;
           let mm;
           while ((mm = re.exec(s))) {
             dirs.add(path.dirname(mm[0].replace(/\x00.*$/, '')));
@@ -135,7 +139,7 @@ function scanDirs(installDir) {
       kind: 'dir',
       path: full,
       size: dirSize(full),
-      note: '旧版本程序目录（含 ' + EXE + '）',
+      note: t('leftovers.note_old_dir', { exe: EXE }),
     });
   };
   for (const root of candidateRoots(installDir)) {
@@ -143,19 +147,19 @@ function scanDirs(installDir) {
     try { list = fs.readdirSync(root, { withFileTypes: true }); } catch (_) { continue; }
     for (const e of list) {
       if (!e.isDirectory()) continue;
-      if (!/^ApkStart/i.test(e.name)) continue;
+      if (!/^(?:zApkStart|ApkStart)/i.test(e.name)) continue;
       consider(path.join(root, e.name));
     }
   }
   // 快捷方式反查到的目录：本身可能就是旧版本目录，或其父/子目录是
   for (const d of rootsFromShortcuts()) {
-    if (/^ApkStart/i.test(path.basename(d))) consider(d);
+    if (/^(?:zApkStart|ApkStart)/i.test(path.basename(d))) consider(d);
     // 也看看它的同级（dist 下往往并排好几个版本目录）
     const parent = path.dirname(d);
     let sib = [];
     try { sib = fs.readdirSync(parent, { withFileTypes: true }); } catch (_) { continue; }
     for (const e of sib) {
-      if (e.isDirectory() && /^ApkStart/i.test(e.name)) consider(path.join(parent, e.name));
+      if (e.isDirectory() && /^(?:zApkStart|ApkStart)/i.test(e.name)) consider(path.join(parent, e.name));
     }
   }
   return out;
@@ -172,7 +176,7 @@ function scanRegistry() {
   for (const root of roots) {
     let text = '';
     try {
-      text = execFileSync('reg', ['query', root, '/s', '/f', 'ApkStart', '/t', 'REG_SZ'],
+      text = execFileSync('reg', ['query', root, '/s', '/f', 'zApkStart', '/t', 'REG_SZ'],
         { encoding: 'utf8', windowsHide: true, timeout: 15000, maxBuffer: 4 * 1024 * 1024 });
     } catch (_) { continue; }
     // reg query 输出是分块的「键 → 值」，这里按块切
@@ -180,7 +184,7 @@ function scanRegistry() {
     for (const b of blocks) {
       const key = (/^(HKEY_[^\r\n]+)$/m.exec(b) || [])[1];
       if (!key) continue;
-      if (!/\\ApkStart/i.test(key)) continue;
+      if (!/\\(?:zApkStart|ApkStart)/i.test(key)) continue;
       const loc = (/InstallLocation\s+REG_\w+\s+(.+)/i.exec(b) || [])[1];
       const disp = (/DisplayName\s+REG_\w+\s+(.+)/i.exec(b) || [])[1];
       const unins = (/UninstallString\s+REG_\w+\s+(.+)/i.exec(b) || [])[1];
@@ -194,7 +198,9 @@ function scanRegistry() {
         kind: 'registry',
         path: key,
         size: 0,
-        note: `失效的卸载项${disp ? `：${String(disp).trim()}` : ''}`,
+        note: disp
+          ? t('leftovers.note_dead_uninstall_named', { name: String(disp).trim() })
+          : t('leftovers.note_dead_uninstall'),
       });
     }
   }
@@ -210,35 +216,37 @@ function scanTemp(dataDir) {
     try { list = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { continue; }
     for (const e of list) {
       const name = e.name;
-      const isOurs = /^ApkStart.*\.(zip|exe|part\d*|tmp)$/i.test(name)
-        || /^ApkStart-.*\.part\d+$/i.test(name);
+      const isOurs = /^(?:zApkStart|ApkStart).*\.(zip|exe|part\d*|tmp)$/i.test(name)
+        || /^(?:zApkStart|ApkStart)-.*\.part\d+$/i.test(name);
       if (!isOurs) continue;
       const full = path.join(d, name);
       let size = 0;
       try { size = e.isDirectory() ? dirSize(full) : fs.statSync(full).size; } catch (_) { /* ignore */ }
-      out.push({ kind: 'temp', path: full, size, note: '更新下载的临时文件' });
+      out.push({ kind: 'temp', path: full, size, note: t('leftovers.note_temp_file') });
     }
   }
   return out;
 }
 
 /** 旧/废弃的快速启动快照：default_boot 是早期版本留下的（一份 ram.img 约 3GB），
- *  *.stale-* 是「删不掉就改名」的残留。当前快照名是 apkstart，绝不碰。 */
+ *  *.stale-* 是「删不掉就改名」的残留。当前快照名是 zapkstart，绝不碰。 */
 function scanSnapshots(avdHome) {
   const out = [];
   if (!avdHome) return out;
-  const snapDir = path.join(avdHome, 'apkstart.avd', 'snapshots');
+  const snapDir = path.join(avdHome, `${brand.AVD}.avd`, 'snapshots');
   let list = [];
   try { list = fs.readdirSync(snapDir, { withFileTypes: true }); } catch (_) { return out; }
   for (const e of list) {
     if (!e.isDirectory()) continue;
-    if (e.name === 'apkstart') continue;   // 当前在用的快照
+    if (e.name === brand.SNAPSHOT) continue;   // 当前在用的快照
     const full = path.join(snapDir, e.name);
     out.push({
       kind: 'dir',
       path: full,
       size: dirSize(full),
-      note: e.name.startsWith('default_boot') ? '旧版遗留的快速启动快照' : '废弃的快照残留',
+      note: e.name.startsWith('default_boot')
+        ? t('leftovers.note_stale_snapshot')
+        : t('leftovers.note_abandoned_snapshot'),
     });
   }
   return out;
@@ -271,20 +279,26 @@ function clean(items, { installDir }) {
     try {
       if (it.kind === 'dir') {
         // 双保险：绝不删当前正在运行的目录
-        if (norm(it.path) === cur) { failed.push({ path: it.path, reason: '这是当前正在运行的版本' }); continue; }
-        if (!fs.existsSync(path.join(it.path, EXE))) { failed.push({ path: it.path, reason: '目录里没有 ' + EXE }); continue; }
+        if (norm(it.path) === cur) {
+          failed.push({ path: it.path, reason: t('leftovers.reason_current_version') });
+          continue;
+        }
+        if (!fs.existsSync(path.join(it.path, EXE))) {
+          failed.push({ path: it.path, reason: t('leftovers.reason_no_exe', { exe: EXE }) });
+          continue;
+        }
         if (rm(it.path)) { freed += it.size || 0; removed.push(it.path); }
-        else failed.push({ path: it.path, reason: '文件被占用（可能有窗口还开着）' });
+        else failed.push({ path: it.path, reason: t('leftovers.reason_file_locked') });
       } else if (it.kind === 'registry') {
         const r = execFileSync('reg', ['delete', it.path, '/f'], { windowsHide: true, timeout: 10000 });
         void r;
         removed.push(it.path);
       } else if (it.kind === 'temp') {
         if (rm(it.path)) { freed += it.size || 0; removed.push(it.path); }
-        else failed.push({ path: it.path, reason: '文件被占用' });
+        else failed.push({ path: it.path, reason: t('leftovers.reason_file_busy') });
       } else if (it.kind === 'shortcut') {
         if (rm(it.path)) removed.push(it.path);
-        else failed.push({ path: it.path, reason: '删除失败' });
+        else failed.push({ path: it.path, reason: t('leftovers.reason_delete_failed') });
       }
     } catch (e) {
       failed.push({ path: it.path, reason: e.message });

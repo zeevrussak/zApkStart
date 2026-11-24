@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מדריך המשתמש ופתרון הבעיות של zApkStart</title>
+<style>
+:root{--bg:#ffffff;--fg:#1f2328;--mut:#57606a;--line:#d0d7de;--code:#eff1f3;--accent:#0969da;--accent-soft:#ddf4ff;--warn:#9a6700;--warn-bg:#fff8c5;--head:#f6f8fa;--tbl:#f6f8fa}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;max-width:1180px;margin:0 auto}
+aside{position:sticky;top:0;height:100vh;overflow:auto;width:280px;flex:0 0 280px;border-right:1px solid var(--line);padding:24px 18px;background:var(--head)}
+aside h2{font-size:15px;margin:0 0 14px;letter-spacing:.5px}
+aside a{display:block;color:var(--mut);text-decoration:none;padding:3px 8px;border-radius:6px;font-size:13.5px;line-height:1.45}
+aside a:hover{background:var(--accent-soft);color:var(--accent)}
+#tocSearch{width:100%;margin-bottom:12px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font:13px/1.4 inherit;background:#fff;color:var(--fg)}
+#tocSearch:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.toc-l3{padding-left:22px!important;font-size:12.5px!important;color:#8c959f!important}
+main{flex:1;min-width:0;padding:40px 48px 80px}
+h1{font-size:30px;margin:0 0 8px;padding-bottom:16px;border-bottom:2px solid var(--line)}
+h2{font-size:23px;margin:42px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:16px}
+h3{font-size:18px;margin:30px 0 12px;scroll-margin-top:16px}
+h4{font-size:16px;margin:22px 0 8px}
+p{margin:12px 0}
+a{color:var(--accent)}
+code{background:var(--code);padding:2px 6px;border-radius:6px;font:13.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:8px;overflow:auto;border:1px solid var(--line)}
+pre code{background:none;padding:0}
+blockquote{margin:16px 0;padding:10px 16px;border-left:4px solid var(--warn);background:var(--warn-bg);color:#633c01;border-radius:0 8px 8px 0}
+blockquote p{margin:0}
+ul,ol{margin:12px 0;padding-left:26px}
+li{margin:5px 0}
+hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+.tw{overflow:auto;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--tbl);font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fbfcfd}
+.btnbar{position:fixed;right:22px;bottom:22px;display:flex;gap:8px}
+.btnbar button{border:1px solid var(--line);background:#fff;color:var(--fg);border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.btnbar button:hover{border-color:var(--accent);color:var(--accent)}
+@media (max-width:880px){aside{display:none}main{padding:24px 20px 60px}h1{font-size:25px}}
+@media print{aside,.btnbar{display:none}main{padding:0;max-width:none}h2{page-break-after:avoid}table,pre,blockquote{page-break-inside:avoid}a{color:inherit;text-decoration:none}}
+html[dir="rtl"] aside{border-right:0;border-inline-end:1px solid var(--line)}
+html[dir="rtl"] blockquote{border-left:0;border-right:4px solid var(--warn);border-radius:8px 0 0 8px}
+html[dir="rtl"] th,html[dir="rtl"] td{text-align:start}
+html[dir="rtl"] ul,html[dir="rtl"] ol{padding-left:0;padding-right:26px}
+html[dir="rtl"] code{direction:ltr;unicode-bidi:isolate}
+html[dir="rtl"] pre{direction:ltr;text-align:left}
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside><h2>תוכן העניינים</h2>
+<input id="tocSearch" type="search" placeholder="סינון תוכן העניינים (Ctrl+F לחיפוש בכל הטקסט)" autocomplete="off" />
+<div id="tocList"><a class="toc-l2" href="#contents">תוכן העניינים</a>
+<a class="toc-l2" href="#intro">1. zApkStart ב-30 שניות</a>
+<a class="toc-l2" href="#setup">2. התקנה והפעלה ראשונה</a>
+<a class="toc-l3" href="#setup-variants">2.1 בחירת הגרסה המתאימה לך</a>
+<a class="toc-l3" href="#setup-first-run">2.2 מה קורה בהפעלה הראשונה</a>
+<a class="toc-l2" href="#usage">3. שימוש יומיומי</a>
+<a class="toc-l3" href="#usage-install">3.1 התקנת יישומים</a>
+<a class="toc-l3" href="#launch">3.2 פתיחת יישומים</a>
+<a class="toc-l3" href="#usage-window">3.3 חלונות ותצוגה</a>
+<a class="toc-l3" href="#shortcuts">3.4 קיצורי מקלדת</a>
+<a class="toc-l3" href="#shared-folder">3.5 החלפת קבצים (Windows ↔ Android)</a>
+<a class="toc-l3" href="#settings">3.6 ניווט במסך ההגדרות</a>
+<a class="toc-l3" href="#updates">3.7 עדכונים מקוונים</a>
+<a class="toc-l2" href="#concepts">4. שלושה מושגי ליבה (המפתח להבנת הודעות השגיאה)</a>
+<a class="toc-l3" href="#concepts-image">4.1 סביבת הרצה / תמונת המערכת</a>
+<a class="toc-l3" href="#concepts-accel">4.2 האצת חומרה</a>
+<a class="toc-l3" href="#concepts-arm">4.3 שכבת התרגום של ARM</a>
+<a class="toc-l2" href="#checkup">5. לפני שמחפשים תקלה: בדיקת מצב וזיהוי אוטומטי</a>
+<a class="toc-l3" href="#checkup-hardware">5.1 בדיקת מצב של המחשב · הגדרה אוטומטית</a>
+<a class="toc-l3" href="#autodetect">5.2 זיהוי אוטומטי (דיבוג אוטומטי)</a>
+<a class="toc-l3" href="#diag-report">5.3 ייצוא דוח אבחון</a>
+<a class="toc-l3" href="#auto-tutorial">5.4 המדריך המובנה והדרכות אוטומטיות</a>
+<a class="toc-l2" href="#faq">6. פתרונות לבעיות נפוצות</a>
+<a class="toc-l3" href="#troubleshoot-accel">6.1 ההודעה &quot;האצת חומרה לא מופעלת&quot; / אתחול איטי</a>
+<a class="toc-l3" href="#install">6.2 כשלי התקנה (INSTALL_FAILED_*)</a>
+<a class="toc-l3" href="#troubleshoot-arm">6.3 אין שכבת תרגום ARM בתמונת המערכת / יישומי ARM נכשלים בהתקנה או קורסים</a>
+<a class="toc-l3" href="#troubleshoot-adb">6.4 adb לא מאושר (אישור ניפוי USB)</a>
+<a class="toc-l3" href="#troubleshoot-launch">6.5 לחיצה כפולה על הסמל לא עושה דבר / המתנה אינסופית / חלון עם כפתור מסתובב</a>
+<a class="toc-l3" href="#troubleshoot-boot">6.6 טבלת עזרה לשאר בעיות ההפעלה</a>
+<a class="toc-l3" href="#troubleshoot-sound">6.7 אין צליל ביישומים / הצליל חלש מדי</a>
+<a class="toc-l3" href="#troubleshoot-dll">6.8 כשל הפעלה בגרסת החנות / 0xC0000135 (טעינת DLL נכשלה)</a>
+<a class="toc-l3" href="#troubleshoot-mic">6.9 יישומים לא מצליחים להשתמש במיקרופון / שיחות קוליות והקלטה נכשלות</a>
+<a class="toc-l3" href="#troubleshoot-gpu">6.10 רינדור בכרטיס מסך ייעודי / מובנה (העדפת מאיץ גרפי)</a>
+<a class="toc-l2" href="#cli">7. שורת הפקודה</a>
+<a class="toc-l2" href="#data-dirs">8. נתונים ותיקיות</a>
+<a class="toc-l2" href="#arm64">Windows ARM64</a>
+<a class="toc-l2" href="#support">9. קבלת עזרה ומשוב</a></div>
+</aside>
+<main>
+<h1 id="overview">מדריך המשתמש ופתרון הבעיות של zApkStart</h1>
+<blockquote>גרסה: v0.6.4 · פלטפורמות: Windows 10/11 x64 ו-ARM64 · עודכן: 2026-11-23  zApkStart הוא מריץ יישומי אנדרואיד ב-Windows: <strong>הוא מתקין יישומי אנדרואיד כמו תוכנת Windows רגילה — כל יישום מופיע בשולחן העבודה ונפתח בלחיצה כפולה.</strong> המדריך הזה מלמד קודם איך משתמשים בתוכנה, ואז נותן פתרונות מוכוונים לפי "תסמין". כל שלב מתאר כפתור או תפריט שבאמת קיימים בתוכנה.</blockquote>
+<hr/>
+<h2 id="contents">תוכן העניינים</h2>
+<ol><li><a href="#intro">1. zApkStart ב-30 שניות</a></li><li><a href="#setup">2. התקנה והפעלה ראשונה</a></li><li><a href="#usage">3. שימוש יומיומי</a></li><li><a href="#concepts">4. שלושה מושגי ליבה (המפתח להבנת הודעות השגיאה)</a></li><li><a href="#checkup">5. לפני שמחפשים תקלה: בדיקת מצב וזיהוי אוטומטי</a></li><li><a href="#faq">6. פתרונות לבעיות נפוצות</a></li></ol>
+<ul><li><a href="#troubleshoot-accel">6.1 ההודעה "האצת חומרה לא מופעלת" / אתחול איטי</a></li><li><a href="#install">6.2 כשלי התקנה (INSTALL_FAILED_*)</a></li><li><a href="#troubleshoot-arm">6.3 אין שכבת תרגום ARM בתמונת המערכת / יישומי ARM נכשלים בהתקנה או קורסים</a></li><li><a href="#troubleshoot-adb">6.4 adb לא מאושר (אישור ניפוי USB)</a></li><li><a href="#troubleshoot-launch">6.5 לחיצה כפולה על הסמל לא עושה דבר / המתנה אינסופית / חלון עם כפתור מסתובב</a></li><li><a href="#troubleshoot-boot">6.6 טבלת עזרה לשאר בעיות ההפעלה</a></li><li><a href="#troubleshoot-sound">6.7 אין צליל ביישומים / הצליל חלש מדי</a></li><li><a href="#troubleshoot-dll">6.8 כשל הפעלה בגרסת החנות / 0xC0000135 (טעינת DLL נכשלה)</a></li><li><a href="#troubleshoot-mic">6.9 יישומים לא מצליחים להשתמש במיקרופון / שיחות קוליות והקלטה נכשלות</a></li><li><a href="#troubleshoot-gpu">6.10 רינדור בכרטיס מסך ייעודי / מובנה (העדפת מאיץ גרפי)</a></li></ul>
+<ol><li><a href="#cli">7. שורת הפקודה</a></li><li><a href="#data-dirs">8. נתונים ותיקיות</a></li><li><a href="#support">9. קבלת עזרה ומשוב</a></li></ol>
+<ul><li><a href="#arm64">Windows ARM64</a></li></ul>
+<hr/>
+<h2 id="intro">1. zApkStart ב-30 שניות</h2>
+<pre><code>קיצור דרך בשולחן העבודה (סמל יישום אמיתי ‎.lnk‎)
+      │ לחיצה כפולה
+      ▼
+zApkStart.exe --launch &lt;חבילה&gt;
+      │ סביבת הריצה לא פועלת? → מופעלת אוטומטית (אמולטור Android 14, מובנה או נשמר בהורדה ראשונה)
+      ▼
+היישום נפתח דרך נקודת הכניסה שהמערכת מזהה (לא ה-Activity הראשי הכתוב קשיח בתוך ה-APK)
+      ▼
+חלון האמולטור = חלון היישום (כותרת מותאמת, סמל משלו, יחס אנכי, מסך מלא במרכז)</code></pre>
+<p><strong>מה מייחד אותו</strong></p>
+<ul><li>🖱️ <strong>לחיצה כפולה על ‎.apk‎ מתקינה</strong>: אחרי רישום שיוך הקבצים, לחיצה כפולה על קובץ APK → ניתוח אוטומטי → התקנה → יצירת סמל בשולחן העבודה.</li><li>🧩 <strong>סמל שולחן עבודה לכל יישום</strong>: הסמל מחולץ אופליין מתוך ה-APK עצמו; לחיצה כפולה על הסמל נכנסת ישר ליישום.</li><li>🪟 <strong>יישום הוא פשוט חלון</strong>: רינדור מקורי, במסך מלא ממלא את גובה המסך ומתמקד, במצב חלון אפשר לגרור ולשנות גודל, וכל יישום זוכר את הגודל שלו.</li><li>🔍 <strong>נמצא דרך החיפוש של Windows</strong>: קיצורי דרך כפולים בשולחן העבודה ובתפריט התחל (<code>Programs\zApkStart\</code>).</li><li>📁 <strong>נתונים משותפים</strong>: <code>%USERPROFILE%\zApkStartShared</code> ↔ ‎<code>/sdcard/zApkStartShared</code>‎ באנדרואיד, בסנכרון דו-כיווני.</li><li>🪶 <strong>מגיע עם סביבת ריצה משלו</strong>: לא תלוי באמולטור שמותקן אצלכם — לא MuMu / LDPlayer / WSA.</li></ul>
+<blockquote>הערה: זהו פרויקט קוד פתוח בשלב מוקדם, חינמי וללא פרסומות, המתוחזק בזמנו הפנוי. תקלות הן דבר צפוי — בשביל זה בדיוק נכתב המדריך הזה.</blockquote>
+<hr/>
+<h2 id="setup">2. התקנה והפעלה ראשונה</h2>
+<h3 id="setup-variants">2.1 בחירת הגרסה המתאימה לך</h3>
+<p>zApkStart מופץ מההפצות שלו ב-GitHub בלבד — הוא אף פעם לא מוריד גרסאות מהפרויקט המקורי ApkStart:</p>
+<ul><li>GitHub: <code>github.com/zeevrussak/zApkStart/releases</code></li></ul>
+<div class="tw"><table><thead><tr><th>גרסה</th><th>קובץ</th><th>מתי בוחרים בה</th></tr></thead><tbody><tr><td><strong>גרסת חנות (MSIX)</strong></td><td><code>zApkStart_&lt;ארבעה מספרים&gt;_x64.msix</code></td><td>התקנה מרשימת Microsoft Store. כוללת סביבת ריצה מלאה, עובדת אופליין אחרי ההתקנה, והעדכונים מנוהלים על ידי החנות</td></tr><tr><td><strong>נייד מלא</strong></td><td><code>zApkStart-v*-win64-full.zip</code>‏ (‎~830 MB‎, ‎~1.3 GB‎ לאחר חילוץ)</td><td>לא רוצים להתקין ולא לחכות להורדות: מחלצים ומריצים, סביבת הריצה בתוך החבילה</td></tr><tr><td><strong>התקנה</strong></td><td><code>zApkStart-v*-Setup.exe</code>‏ (‎~1.3 GB‎)</td><td>רוצים קיצורי דרך בשולחן העבודה/תפריט התחל ורשומת הסרה</td></tr><tr><td><strong>נייד קל</strong></td><td><code>zApkStart-v*-win64-portable.zip</code>‏ (‎96 MiB‎, ‎~227 MB‎ לאחר חילוץ)</td><td>רוצים קודם לנסות; סביבת הריצה מורידה בהפעלה הראשונה</td></tr><tr><td><strong>נייד קל ARM64</strong></td><td><code>zApkStart-v*-arm64-portable.zip</code></td><td>מחשבי Windows על ARM64 — ראו <a href="#arm64">Windows ARM64</a> להלן</td></tr></tbody></table></div>
+<blockquote>⚠️ <strong>השתמשו תמיד בגרסה החדשה ביותר (כרגע 0.6.4)</strong>. גרסאות ישנות (0.5.x ומטה) או לא כללו סביבת ריצה מובנית (כל הפעלה חיפשה/הורידה 1.5 GB של סביבת ריצה), או שהשתמשו כברירת מחדל בחלון מוטמע — המקור הקלאסי ל"איטי מאוד, לא נפתח, נפתח חלון עם כפתור מסתובב". אם אתם משדרגים מגרסה ישנה, ודאו שקיצור הדרך בשולחן העבודה מצביע על תיקיית התוכנה החדשה.</blockquote>
+<h3 id="setup-first-run">2.2 מה קורה בהפעלה הראשונה</h3>
+<ol><li><strong>(נייד קל בלבד) הורדת סביבת הריצה</strong>: adb, Android Emulator ותמונת המערכת של Android 14; המקורות הרשמיים מגיעים ל-10+ MB/s עם הורדה מקבילית ב-8 חוטים + המשך מנקודת עצירה. גרסאות מלא/חנות מדלגות על השלב.</li><li><strong>חילוץ ראשון של התמונה</strong>: תמונת ה-xz נחלצת אל ‎<code>%APPDATA%\zapkstart\system-images</code>‎ (כ-20 שניות, פעם אחת בלבד).</li><li><strong>יצירת ‎<code>/data</code>‎ ראשונה</strong>: zApkStart יוצר בעצמו נתוני משתמש ext4 עם הצפנה ותוויות SELinux (בתמונה הרשמית יש רק דוגמה של 1 MB).</li><li><strong>אתחול אוטומטי</strong>: מכאן והלאה הפעלת יישום היא <code>am start</code> אחד; אתחול קר לוקח כ-23 שניות ושחזור מ-snapshot כ-10 שניות.</li></ol>
+<blockquote>הפעלה ראשונה איטית זה תקין — זו עלות חד-פעמית. מהפעלה הבאה והלאה הכניסה מיידית.</blockquote>
+<hr/>
+<h2 id="usage">3. שימוש יומיומי</h2>
+<h3 id="usage-install">3.1 התקנת יישומים</h3>
+<p>שלוש דרכים, לבחירתכם:</p>
+<ul><li><strong>לחיצה כפולה על קובץ ה-APK</strong> (קודם לרשום את השיוך: הגדרות → שילוב מערכת → שיוך קבצי ‎.apk‎);</li><li>"התקנת יישום" בחלון הראשי;</li><li>שורת פקודה: <code>zApkStart.exe &lt;נתיב\to.apk&gt;</code>.</li></ul>
+<p>חבילות מפוצלות (‎<code>.apks</code>‎ / ‎<code>.xapk</code>‎) נתמכות (באמצעות <code>install-multiple</code> אוטומטית). קיצורי דרך בשולחן העבודה ובתפריט התחל נוצרים אוטומטית אחרי ההתקנה.</p>
+<h3 id="launch">3.2 פתיחת יישומים</h3>
+<p>פשוט לחצו לחיצה כפולה על הסמל בשולחן העבודה. כל היישומים חולקים סביבת ריצה אחת, ולכן <strong>היישום השני נפתח כמעט מיד</strong>.</p>
+<h3 id="usage-window">3.3 חלונות ותצוגה</h3>
+<div class="tw"><table><thead><tr><th>פעולה</th><th>איך</th></tr></thead><tbody><tr><td>מסך מלא / חלון</td><td>‏<code>F11</code> או תפריט ימני במגש המערכת. מסך מלא רק מגדיל את החלון, לא משנה את יחס התמונה</td></tr><tr><td>סיבוב אנכי/אופקי</td><td>‏<code>Ctrl+Alt+R</code> (גלובלי) או כפתור הסיבוב בשורת הכותרת; הכיוון נזכר לכל יישום</td></tr><tr><td>מסך מלא אוטומטי</td><td>הגדרות → תצוגה וחלונות → מסך מלא אוטומטי (הכי טוב בשילוב עם "כיוון מאולץ")</td></tr><tr><td>אופקי/אנכי בכפייה</td><td>הגדרות → תצוגה וחלונות → כיוון המסך</td></tr></tbody></table></div>
+<blockquote>רק המעבר האחד שבו "כיוון הפאנל שונה מכיוון היישום" מפעיל מחדש את סביבת הריצה (כ-40 שניות, שורת הכותרת מציגה הודעה). יישומים באותו כיוון נפתחים מיד אחריהם.</blockquote>
+<h3 id="shortcuts">3.4 קיצורי מקלדת</h3>
+<div class="tw"><table><thead><tr><th>מקשים</th><th>אפקט</th></tr></thead><tbody><tr><td><code>F11</code></td><td>מעבר בין מסך מלא למצב חלון</td></tr><tr><td><code>Ctrl+Alt+R</code></td><td>סיבוב היישום הנוכחי אנכי/אופקי</td></tr><tr><td><code>Ctrl+R</code></td><td>סיבוב בתוך חלון המעטפת (במצב חלון מקורי השתמשו ב-<code>Ctrl+Alt+R</code>)</td></tr></tbody></table></div>
+<h3 id="shared-folder">3.5 החלפת קבצים (Windows ↔ Android)</h3>
+<p>‏<code>%USERPROFILE%\zApkStartShared</code> במחשב ו-‎<code>/sdcard/zApkStartShared</code>‎ בתוך אנדרואיד מסתנכרנים דו-כיוונית תוך שניות. נקודת כניסה: הגדרות → שילוב וקבצים → החלפת קבצים ("סנכרון מיידי" או "פתיחת התיקייה").</p>
+<h3 id="settings">3.6 ניווט במסך ההגדרות</h3>
+<p>מגרסה 0.6.0 ההגדרות מחולקות לשמונה קטגוריות עם תיבת חיפוש בראש המסך (הקלידו מילות מפתח כמו "אופקי", "זיכרון", "מתאם" — חיפוש חוצה קטגוריות):</p>
+<div class="tw"><table><thead><tr><th>קטגוריה</th><th>תוכן עיקרי</th></tr></thead><tbody><tr><td>כללי והתקנה</td><td>סביבת ריצה וסביבה, הגדרה בלחיצה אחת, הפעלה עם האתחול, שימוש בדיסק וניקוי</td></tr><tr><td>תצוגה וחלונות</td><td>מצב תצוגה, מסך מלא אוטומטי, כיוון מסך, פריסת טאבלט, אחסון חלונות</td></tr><tr><td>קלט ופקדים</td><td>כפתורי עכבר, מיפוי מקלדת</td></tr><tr><td>ביצועים ומשאבים</td><td>מדיניות משאבים, העדפת מאיץ גרפי (ייעודי/מובנה), מיקרופון, איכות תמונה, מחיצת נתונים, שפת המערכת, snapshots, חימום מקדים באתחול</td></tr><tr><td>רשת והורדות</td><td>עדכונים ומקורות הורדה, מראות מואצות, מספר חוטי הורדה, DNS מהיר</td></tr><tr><td>אבחון ותיקון</td><td>בדיקת מצב של המחשב, טלאי מנהל/תאימות, זיהוי אוטומטי</td></tr><tr><td>שילוב וקבצים</td><td>שולחן עבודה ויישומים, החלפת קבצים, שילוב מערכת</td></tr><tr><td>עדכונים ואודות</td><td>עדכוני תוכנה, אודות</td></tr><tr><td>מעבדה</td><td>מופעים מרובים בחלונות מקוריים של Windows (ניסיוני), מספר יישומים ברקע</td></tr></tbody></table></div>
+<blockquote><strong>מעבדה · מופעים מרובים (ניסיוני)</strong>: כשזה מופעל, פתיחת יישום חדש לא סוגרת בכפייה את הקודם — כמה יישומים יכולים להישאר ברקע, לחזור אליהם בכל רגע ולשמור את מצב ההתחברות. מכיוון שלסביבת הרינדור של אנדרואיד יש רק חלון אמולטור אחד, בכל רגע נתון מוצג צג של יישום אחד בלבד; זה לא ריבוי חלונות אמיתי זה לצד זה. הפעלה מגדילה את צריכת הזיכרון. כבוי כברירת מחדל — התעלמו ממנו אם חשובה לכם יציבות.</blockquote>
+<blockquote><strong>DNS מהיר</strong>: zApkStart מגיע כש-DNS המהיר <strong>כבוי כברירת מחדל</strong> (אנדרואיד האורחת משתמשת אז ב-DNS של המארח). אם פתירת השמות באנדרואיד איטית — למשל מאחורי VPN או רשת ארגונית — הפעילו אותו תחת הגדרות → רשת והורדות; הוא מכוון את אנדרואיד לשרתים ציבוריים מהירים. כבו אותו שוב אם פתירת שמות פנימיים משתבשת.</blockquote>
+<h3 id="updates">3.7 עדכונים מקוונים</h3>
+<p>הגדרות → עדכונים ואודות → בדיקת עדכונים, או קליק ימני במגש → בדיקת עדכונים. צינור העדכון בודק את המקורות ובוחר במהיר שבהם (GitHub ומראות מוגדרות), מוריד במקביל בחתיכות ומחליף מקור אוטומטית בכשל. עדכון לא נוגע בסביבת הריצה, ביישומים המותקנים או ב-snapshots.</p>
+<p>גרסאות נייד חדשות תומכות ב<strong>עדכון מצטבר</strong>: בכל הפצה מתפרסם גם "מניפסט קוד" וחבילה קטנה שמכילה קוד בלבד (כמה MB, מול ‎~100 MB‎ לחבילה השלמה). אם גרסת מעטפת ה-Electron לא השתנתה, העדכון מוריד רק את החבילה הקטנה, מאמת קובץ-קובץ ומחליף את קוד התוכנה תוך שניות. אם גרסת המעטפת כן השתנתה, המניפסט חסר או שאימות כלשהו נכשל — התוכנה חוזרת אוטומטית לחבילה המלאה, כך שעדכון לא יכול לקלקל את התוכנה. גרסאות חנות מתעדכנות על ידי Microsoft Store.</p>
+<blockquote>הערה: רק מי שמתקין גרסאות נייד דרך "בדיקת עדכונים" מ-GitHub מקבל עדכונים מצטברים; התקנות מ-Microsoft Store עוברות דרך החנות. לעדכון המצטבר אין שום השפעה על יישומים מותקנים, נתוני אנדרואיד, סביבת הריצה או snapshots.</blockquote>
+<hr/>
+<h2 id="concepts">4. שלושה מושגי ליבה (המפתח להבנת הודעות השגיאה)</h2>
+<p>רוב ה"בעיות המוזרות" מגיעות מאחד משלושת הדברים להלן. דקה של הבנה כאן תחסוך הרבה באבחון.</p>
+<h3 id="concepts-image">4.1 סביבת הרצה / תמונת המערכת</h3>
+<p>zApkStart לא מדמה "אנדרואיד ריק" — הוא טוען <strong>תמונת מערכת Android 14 שלמה</strong> כבסיס. ב-0.6.3 יש <strong>תמונה אוניברסלית אחת</strong> (Google Play x86_64); גם יישומי x86 וגם ARM רצים עליה — אין עוד זוג "תמונת AOSP / תמונת תאימות" נפרד כמו בגרסאות ישנות.</p>
+<ul><li>תמונה חסרה / פגומה, או לא תואמת לנתוני משתמש ישנים → כשל אתחול, אתחול תקוע, לופ הפעלות.</li><li>נתוני המשתמש (‎<code>/data</code>‎) הם שכבת הפרש דקה; תמונת המערכת משותפת לכל המחשב.</li></ul>
+<h3 id="concepts-accel">4.2 האצת חומרה</h3>
+<p>כדי שהאמולטור ירוץ מהר הוא צריך האצת וירטואליזציה של המעבד. ב-Windows יש בדיוק שתי אפשרויות:</p>
+<div class="tw"><table><thead><tr><th>שיטה</th><th>מה זה</th><th>מי צריך הרשאת מנהל</th><th>האם חובה אתחול אחרי התקנה?</th></tr></thead><tbody><tr><td><strong>WHPX</strong></td><td>תכונה מובנית של Windows — "Windows Hypervisor Platform"</td><td>בהפעלת התכונה</td><td>כן</td></tr><tr><td><strong>AEHD</strong></td><td>מנהל התקן הליבה של Google</td><td>בהתקנת מנהל ההתקן</td><td>לא</td></tr></tbody></table></div>
+<p><strong>זה רץ גם בלי האצה</strong> (הדמיה תוכנתית טהורה, TCG) — פשוט האתחול לוקח דקות והתמונה נשמטת בקלות. זו "איטיות", לא "כשל". zApkStart חוזר אוטומטית למצב תקין ומנסה שוב עד 4 שילובי פרמטרים לאורך "מנוע רינדור → שיטת האצה → זיכרון/אתחול קר".</p>
+<blockquote>אל תבלבלו בין <strong>VirtualMachinePlatform</strong> (של WSL2) לבין מתג ההאצה. לאמולטור דרוש <strong>HypervisorPlatform</strong>. עם הראשון בלבד, ‎<code>emulator -accel-check</code>‎ עדיין ידווח שההאצה לא זמינה.</blockquote>
+<h3 id="concepts-arm">4.3 שכבת התרגום של ARM</h3>
+<p>הרוב המוחלט של יישומי האנדרואיד מהשוק הסיני מספקים <strong>ספריות מקוריות של ARM</strong> (arm64-v8a / armeabi-v7a), ואילו תמונת המערכת היא <strong>x86_64</strong> — נדרשת "שכבת תרגום" שתעביר פקודות ARM למעבד x86. התמונה האוניברסלית של 0.6.3 כוללת בתוכה את שכבת ‎<code>ndk_translation</code>‎ החדשה, ולכן יישומי ARM בדרך כלל מותקנים בלי שום הגדרה.</p>
+<ul><li>במפגש הראשון עם יישום ARM שרכיבי שכבת התרגום שלו עדיין לא במקום, zApkStart משלים אותם אוטומטית, מפעיל מחדש את סביבת הריצה ומנסה שוב (ראו 6.3).</li><li>לתמונות ישנות (API 30) יש בעיות תאימות עם השכבה החדשה (למשל יישומי ByteDance שמפילים ‎<code>DoBadTrampoline</code>‎ SIGABRT); תמונת Android 14 תיקנה זאת.</li></ul>
+<hr/>
+<h2 id="checkup">5. לפני שמחפשים תקלה: בדיקת מצב וזיהוי אוטומטי</h2>
+<p>לפני שקוראים את המדריך, תנו לתוכנה לבדוק את עצמה — היא מתקנת אוטומטית את רוב הבעיות.</p>
+<h3 id="checkup-hardware">5.1 בדיקת מצב של המחשב · הגדרה אוטומטית</h3>
+<p>מיקום: הגדרות → אבחון ותיקון → <strong>התחלת בדיקת מצב</strong></p>
+<ul><li>מה נבדק: וירטואליזציה במעבד (VT-x/SVM) מופעלת, זמינות Hyper-V / Hypervisor Platform, כרטיס מסך / זיכרון וידאו / מנהל התקן, זיכרון, גרסת מערכת, ‎<code>emulator -accel-check</code>‎, מנהל ההתקן AEHD.</li><li>לחיצה על "<strong>החלת תצורה מומלצת</strong>" כותבת אוטומטית את הפריטים הבטוחים: זיכרון / מספר ליבות / רזולוציית רינדור / איכות תמונה / הדמיה תוכנתית בכפייה כשאין האצה, ומקבעת אותם כפרופיל מנהל התקן למחשב הזה, שמוחל אוטומטית מעתה.</li><li>התוצאות מדורגות: <code>ok</code> (תקין) / <code>warn</code> (עובד אבל כדאי לייעל) / <code>bad</code> (לא ירוץ עד לתיקון). לכל פריט יש צבע והסבר.</li></ul>
+<p>רק שני דברים באמת דורשים אתכם:</p>
+<ul><li><strong>וירטואליזציה ב-BIOS</strong>: אתחול לתוך ה-BIOS → הפעלת Intel VT-x / AMD SVM → Enabled (התוכנה לא יכולה לעשות זאת בשבילכם).</li><li><strong>תכונות Windows / מנהל התקן ההאצה</strong>: ראו 6.1.</li></ul>
+<h3 id="autodetect">5.2 זיהוי אוטומטי (דיבוג אוטומטי)</h3>
+<p>מיקום: הגדרות → אבחון ותיקון → "זיהוי אוטומטי · אבחון חכם"</p>
+<p>כל 10 דקות ברקע התוכנה סורקת את המחשב, מציגה בעיות בשש קטגוריות ומציעה <strong>תיקון בלחיצה אחת</strong> לכל אחת (הפעלת סביבת הריצה מחדש, ניקוי נעילות, סגירת תהליכים יתומים, פסילת snapshots, ניקוי דיסק, איפוס רשת אנדרואיד…), ובודקת שוב אוטומטית אחרי התיקון:</p>
+<div class="tw"><table><thead><tr><th>קטגוריה</th><th>בעיות שמכוסות</th></tr></thead><tbody><tr><td>סביבת ריצה</td><td>הסיבה האמיתית לכשל האתחול הקודם, אתחול תקוע, קובצי נעילה שנותרו, תהליכי אמולטור יתומים, snapshot ריק, אין האצת חומרה</td></tr><tr><td>חיבור מכשיר</td><td>adb לא מאושר, offline, סביבת הריצה רצה אבל adb לא רואה מכשיר</td></tr><tr><td>אחסון</td><td>שטח פנוי בדיסק, תצורת מחיצת הנתונים מול המצב בפועל, תיקייה משותפת שאינה ניתנת לכתיבה</td></tr><tr><td>הגדרות</td><td>התנגשות כיוון מסך עם הפאנל הפיזי, מסך מלא אוטומטי שלא פועל בחלון נפרד</td></tr><tr><td>רשת/יומנים</td><td>אין רשת בצד אנדרואיד, מקורות הורדה לא נגישים, שגיאות ביומנים האחרונים</td></tr></tbody></table></div>
+<blockquote>שני עקרונות: חיישן שנכשל לא מדווח כבעיה (אם לא ניתן לקרוא את המצב, נאמר "לא ידוע" — אף פעם לא ניחוש); אותה בעיה ישנה לא מפריעה שוב ושוב.</blockquote>
+<h3 id="diag-report">5.3 ייצוא דוח אבחון</h3>
+<p>מיקום: הגדרות → אבחון ותיקון → <strong>ייצוא דוח אבחון</strong> (או הכפתור באותו שם במסך שילוב המערכת)</p>
+<p>הדוח הוא טקסט פשוט: תצורת המחשב, פרמטרי ההפעלה שנבחרו בפועל, יומנים ומסקנות אבחון. צרפו אותו כשמדווחים על בעיה — זה מקצר מאוד את האבחון.</p>
+<h3 id="auto-tutorial">5.4 המדריך המובנה והדרכות אוטומטיות</h3>
+<p>מגרסה 0.6.3 המדריך הזה <strong>מוטמע בתוך התוכנה</strong>: כפתור ה-"?" בשורת הכותרת של החלון הראשי ו"פתיחת מדריך המשתמש" תחת הגדרות → אודות פותחים אותו ישירות, עם חיפוש, גלילה והדפסה / שמירה כ-PDF. בעת הפתיחה הוא ממוקם אוטומטית בסעיף הרלוונטי לתקלה הנוכחית.</p>
+<p>הזיהוי/התיקון האוטומטיים גם מביאים את ההדרכה אליכם:</p>
+<ul><li>כשהזיהוי האוטומטי מוצא בעיה, ליד הפריט יש כפתור "הדרכה" שקופץ ישר לסעיף המתאים;</li><li>עבור האצת חומרה, כשלי התקנה, שכבת תרגום ARM, אישור adb, אין-צליל וכדומה — <strong>אחרי כשל של תיקון אוטומטי ההדרכה המתאימה נפתחת אוטומטית</strong>, כך שלא צריך לחפש כאן;</li><li>אותה הדרכה נפתחת אוטומטית לכל היותר פעם אחת בכל הרצה של התוכנה — היא לא תקטע אתכם שוב ושוב.</li></ul>
+<blockquote>כניסה ידנית: כפתור ה-<code>?</code> בשורת הכותרת. כדי להשהות זמנית את הפתיחה האוטומטית, כבו התראות בהגדרות הזיהוי האוטומטי; ההדרכות נגישות בכל זאת מכפתור "הדרכה" בפריט הבעיה.</blockquote>
+<hr/>
+<h2 id="faq">6. פתרונות לבעיות נפוצות</h2>
+<h3 id="troubleshoot-accel">6.1 ההודעה "האצת חומרה לא מופעלת" / אתחול איטי</h3>
+<p><strong>תסמינים</strong>: ההגדרות/האבחון אומרים "אין כרגע האצת חומרה" / "האצת חומרה לא זמינה"; האתחול לוקח דקות והתמונה נשמטת.</p>
+<p><strong>קודם כל, להבהיר</strong>: בדרך כלל זו "איטיות", לא "לא נפתח". zApkStart כבר חזר אוטומטית להדמיה תוכנתית. את ההאצה צריך רק כדי להגיע לחלקות.</p>
+<p><strong>לפי סוג הגרסה:</strong></p>
+<ul><li><strong>התקנה / נייד</strong>: הגדרות → אבחון ותיקון → בדיקת מצב של המחשב → למצוא "האצת חומרה לא מופעלת" → לחיצה על <strong>תיקון</strong>. מופיעה בקשת UAC אחת, ו-WHPX מופעל אוטומטית; אם זה נכשל (מערכת לא נתמכת או שלחצתם "לא"), מותקן במקום זאת מנהל ההתקן AEHD.</li><li><strong>גרסת Microsoft Store (MSIX)</strong>: יישומי חנות <strong>לא יכולים להעלות הרשאות בעצמם</strong>, ולכן לחיצה על "תיקון" פותחת את תיבת הדו-שיח "הפעלה או כיבוי של תכונות Windows":</li></ul>
+<p>1. לסמן את <strong>"Windows Hypervisor Platform" (HypervisorPlatform)</strong>; 2. לאשר ולבצע <strong>הפעלה מחדש של המחשב</strong> פעם אחת.</p>
+<p>אפשר גם להריץ ב-<strong>PowerShell כמנהל</strong>:</p>
+<p>``<code>powershell dism /online /enable-feature /featurename:HypervisorPlatform /all /norestart dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart </code>``</p>
+<blockquote>שתי מלכודות: ① אל תפעילו רק את VirtualMachinePlatform — זה לא ההאצה שהאמולטור צריך; ② אם VT-x/SVM כבויים ב-BIOS, הפעילו אותם קודם לפי 5.1, אחרת הפעלת תכונת ה-Windows לא תועיל. אם מנהל התקן כרטיס המסך ישן מ-3 שנים, עדכנו אותו מאתר היצרן; אבל zApkStart לא מתקין מנהלי התקנים בעצמו (התקנה שגויה מחמירה את המצב). חלק מכרטיסי המסך הישנים / המובנים זקוקים לטלאי תאימות: ראו הגדרות → אבחון ותיקון → מנהל התקן · טלאי תאימות.</blockquote>
+<hr/>
+<h3 id="install">6.2 כשלי התקנה (INSTALL_FAILED_*)</h3>
+<p><strong>תסמינים</strong>: התקנת יישום נכשלת; ההודעה בדרך כלל מתחילה ב-"Install failed:" ומסתיימת בקוד שגיאה ‎<code>INSTALL_*</code>‎.</p>
+<p>zApkStart מתרגם את שגיאות האנגלית המקוריות. השוו מול הטבלה:</p>
+<div class="tw"><table><thead><tr><th>קוד</th><th>משמעות</th><th>מה עושים</th></tr></thead><tbody><tr><td><code>INSTALL_FAILED_NO_MATCHING_ABIS</code></td><td>היישום מספק ספריות ARM בלבד ולתמונה הנוכחית אין שכבת תרגום ARM</td><td><strong>בדרך כלל מטופל אוטומטית</strong>: zApkStart מחליף תמונה ומנסה שוב. ראו <a href="#troubleshoot-arm">6.3</a></td></tr><tr><td><code>INSTALL_FAILED_OLDER_SDK</code></td><td>היישום דורש אנדרואיד חדש יותר</td><td>נדרשת תמונת מערכת חדשה יותר; כרגע Android 14 (API 34), נדיר</td></tr><tr><td><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></td><td>ל-APK אין חתימה תקפה</td><td>ה-APK פגום או לא רשמי; השיגו את החבילה מחדש</td></tr><tr><td><code>INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES</code> / <code>INSTALL_FAILED_UPDATE_INCOMPATIBLE</code></td><td>החתימה שונה מהגרסה המותקנת</td><td>קודם להסיר את הגרסה הישנה ואז להתקין</td></tr><tr><td><code>INSTALL_FAILED_VERSION_DOWNGRADE</code></td><td>כבר מותקנת גרסה חדשה יותר</td><td>אי אפשר להחליף בירידת גרסה; התקינו גרסה גבוהה יותר או הסירו קודם</td></tr><tr><td><code>INSTALL_FAILED_INSUFFICIENT_STORAGE</code></td><td>אין מקום בדיסק של סביבת הריצה</td><td>נקו את הדיסק, או העבירו את תיקיית נתוני סביבת הריצה לכונן פנוי (הגדרות → שילוב מערכת)</td></tr><tr><td><code>INSTALL_FAILED_INVALID_APK</code></td><td>APK פגום/חלקי</td><td>ייתכן הורדה שלא הושלמה; הורידו מחדש</td></tr><tr><td><code>INSTALL_FAILED_INVALID_URI</code></td><td>נתיב ה-APK מכיל תווים מיוחדים/לא אנגליים</td><td>העבירו את ה-APK לנתיב ASCII פשוט והתקינו שוב</td></tr><tr><td><code>INSTALL_FAILED_ALREADY_EXISTS</code></td><td>קיים כבר באותו שם עם חתימה שונה</td><td>הסירו קודם</td></tr><tr><td><code>INSTALL_FAILED_DEPRECATED_SDK_VERSION</code></td><td>יישום המכוון לאנדרואיד עתיק מאוד</td><td><strong>מטופל אוטומטית</strong>: zApkStart מנסה שוב עם פרמטר העקיפה הרשמי</td></tr><tr><td><code>INSTALL_FAILED_TEST_ONLY</code></td><td>חבילת בדיקות בלבד</td><td><strong>מטופל אוטומטית</strong>: מנסה שוב עם פרמטר חבילת הבדיקות</td></tr><tr><td><code>INSTALL_FAILED_MISSING_SHARED_LIBRARY</code></td><td>תכונת מכשיר/ספריית יצרן נדרשת חסרה</td><td>היישום תלוי בסביבת יצרן ספציפית שאמולטור לא יכול לספק</td></tr><tr><td><code>INSTALL_FAILED_USER_RESTRICTION</code></td><td>המערכת חוסמת התקנה</td><td>הפעילו מחדש את סביבת הריצה ונסו שוב</td></tr><tr><td><code>INSTALL_FAILED_CONFLICTING_PROVIDER</code></td><td>ContentProvider מתנגש עם יישום מותקן</td><td>הסירו את היישום המתנגש</td></tr><tr><td><code>INSTALL_FAILED_INTERNAL_ERROR</code></td><td>שגיאת מערכת פנימית (בדרך כלל מקום לא מספיק או אתחול שלא הושלם)</td><td>הפעילו מחדש את סביבת הריצה, המתינו לסיום האתחול ונסו שוב</td></tr></tbody></table></div>
+<blockquote>אם תקבלו אנגלית גולמית מחוץ לטבלה, ייצאו דוח אבחון לפי 5.3 ודווחו.</blockquote>
+<hr/>
+<h3 id="troubleshoot-arm">6.3 אין שכבת תרגום ARM בתמונת המערכת / יישומי ARM נכשלים בהתקנה או קורסים</h3>
+<p><strong>תסמינים</strong>: בהתקנה מופיע ‎<code>INSTALL_FAILED_NO_MATCHING_ABIS</code>‎ עם נוסח כמו "היישום מספק ספריות מקוריות של ARM בלבד… לתמונת המערכת הנוכחית אין שכבת תרגום ARM"; או שהיישום מותקן אבל קורס מיד בהפעלה, עם ‎<code>DoBadTrampoline</code>‎, ‎<code>libndk_translation</code>‎, ‎<code>UnsatisfiedLinkError</code>‎, ‎<code>...so not found</code>‎ ביומנים.</p>
+<p><strong>רקע</strong>: 0.6.3 משתמש ב<strong>תמונת Android 14 אוניברסלית אחת</strong> שתומכת גם ב-x86 וגם ב-ARM, עם שכבת התרגום מובנית. גרסאות ישנות דרשו החלפת תמונה ידנית; המתג "תמונת תאימות אוניברסלית (מנוהלת אוטומטית)" היום <strong>מיועד רק לתאימות לתצורות ישנות — בדרך כלל אין לגעת בו</strong>.</p>
+<p><strong>מה zApkStart עושה אוטומטית:</strong></p>
+<ol><li>אם ההתקנה מדווחת ‎<code>NO_MATCHING_ABIS</code>‎ — מעבר אוטומטי לתמונת התאימות → הפעלת סביבת הריצה מחדש → התקנה מחדש של היישומים המותקנים מגיבויי ה-APK המקומיים → ניסיון התקנה חוזר (ביומן: "מחליף לתמונת התאימות ומפעיל מחדש את סביבת הריצה…").</li><li>אם יישום קורס בהפעלה והיומנים מצביעים בבירור על שכבת תרגום ARM (למשל ‎<code>DoBadTrampoline</code>‎) — מעבר אוטומטי לתמונת התאימות של Android 14 וניסיון חוזר (ביומן: "זוהתה קריסת שכבת תרגום ARM, מחליף לתמונת תאימות אוטומטית…").</li></ol>
+<p><strong>מה נדרש מכם:</strong></p>
+<ul><li><strong>להיות סבלניים</strong>: החלפת תמונה מפעילה מחדש את סביבת הריצה — כ-40 שניות עד דקה — וייתכן שיופיע חלון התקדמות.</li><li><strong>לוודא שהתמונה במקום</strong>: הגדרות → כללי והתקנה → סביבת ריצה, לבדוק את מצב "תמונת תאימות אוניברסלית (מנוהלת אוטומטית)"; אם מוצג שלא הורדה, לחצו על "הורדת תמונת תאימות" (‎~1.5 GB‎), ואחרי השלמתה <strong>הפעילו מחדש את סביבת הריצה</strong> כדי שייכנס לתוקף.</li><li><strong>עדיין קורס</strong>: מיעוט של יישומים מכיל בדיקות אנטי-הדמיה עמוקות יותר (אימות כפוי של חיישנים אמיתיים, מודם וכדומה) ופשוט לא יכול לרוץ באמולטור; ליישומים כאלה יש הסבר בשפה פשוטה — זו מגבלה, לא תקלה.</li></ul>
+<p><strong>מה עושים כשמופיע ""התקנה נכשלה" באדום אבל הנוסח אומר "מנסה שוב אחרי מעבר לתמונת תאימות"?</strong></p>
+<p>זו הייתה שגיאת תצוגה בגרסאות ישנות: קובץ התמונה היה על הדיסק, אבל נעשה בו שימוש חוזר בסביבת ריצה ישנה ששכבת התרגום שלה כבויה, המעבר והניסיון החוזר דולגו ודווח כשל בעוד הנוסח המשיך לטעון "מנסה שוב". <strong>אינכם על הקוד החדש ביותר — שדרגו ל-build החדש ביותר של 0.6.4</strong> (תוקן בגרסה שאליה מתועד המדריך הזה: לפני ההתקנה נבדקת יכולת התרגום האמיתית של סביבת הריצה במקום רק לבדוק שהקובץ קיים; ‎<code>NO_MATCHING_ABIS</code>‎ תמיד מפעיל מעבר + הפעלה מחדש + פסילת snapshot ישן לפני התקנה מחדש; כשל שני מדווח כהוויתו, בלי לטעון "מנסה שוב"). שדרגו והתקינו את היישום שוב.</p>
+<blockquote>נבדק בשטח: אפליקציית Hongguo (com.phoenix.read, arm64-v8a בלבד) מותקנת, נכנסת לפיד ההמלצות ומנגנת וידאו כרגיל על תמונת Android 14 + שכבת התרגום החדשה. ‎<code>ro.product.cpu.abilist</code>‎ של סביבת הריצה = ‎<code>x86_64,arm64-v8a</code>‎ — השכבה פעילה.</blockquote>
+<hr/>
+<h3 id="troubleshoot-adb">6.4 adb לא מאושר (אישור ניפוי USB)</h3>
+<p><strong>תסמינים</strong>: האבחון מדווח "adb לא מאושר" או "אישור הניפוי של אנדרואיד לא הושלם"; ‎<code>adb devices</code>‎ מציג <code>unauthorized</code>; היישומים לא מתחילים.</p>
+<p><strong>הסדר הנכון:</strong></p>
+<ol><li>בדקו אם יש חלון אמולטור עם תיבת הדו-שיח <strong>"אישור ניפוי USB?"</strong> — לחצו שם על <strong>אישור</strong>, וסמנו <strong>"אפשר תמיד ניפוי מהמחשב הזה"</strong> כדי שלא ישאל שוב.</li><li>אם החלון לא ניתן ללחיצה או לא מופיע: הגדרות → סביבת ריצה → <strong>איפוס נתוני אנדרואיד / מחיקת נתוני אנדרואיד</strong>, ואז נסו שוב (היישומים המותקנים נמחקים; קובצי ה-APK נשארים ומותקנים אוטומטית מחדש; המערכת עצמה לא נפגעת).</li></ol>
+<blockquote>⚠️ <strong>אל תמחקו את ‎<code>%USERPROFILE%\.android\adbkey</code>‎</strong>. נבדק בשטח: זו בדיוק הפעולה ההפוכה. אנדרואיד כותב מפתח ציבורי חדש רק כשקובץ ‎<code>adb_keys</code>‎ לא קיים; אם תחליפו מפתח פרטי חדש והמערכת עדיין מחזיקה את המפתח הציבורי הישן — השניים לא יתאימו לעולם והאישור ייכשל תמיד.</blockquote>
+<blockquote>בדיקה משורת הפקודה: שירות ה-adb של zApkStart רץ על <strong>הפורט הייעודי 5044</strong> (מופרד לחלוטין מ-5037 שלכם): ``<code>powershell $env:ANDROID_ADB_SERVER_PORT = 5044 adb devices    # אמור להציג emulator-5554 </code>`<code> אל תריצו ‎</code>adb connect`‎ ידני לפורט 5555 — תמונת ה-Play קופצת "אישור ניפוי USB" מעל היישום, מה שנראה כאילו התוכנה שבורה.</blockquote>
+<hr/>
+<h3 id="troubleshoot-launch">6.5 לחיצה כפולה על הסמל לא עושה דבר / המתנה אינסופית / חלון עם כפתור מסתובב</h3>
+<p>הבעיות האלה כמעט תמיד מצביעות על <strong>נקודת הכניסה או השתלטות החלון</strong>. בדקו לפי הסדר.</p>
+<p><strong>① ודאו שאתם מריצים את הגרסה החדשה</strong></p>
+<ul><li>בדקו את תחילת ‎<code>%APPDATA%\zApkStart\logs\app.log</code>‎: היא צריכה לומר <code>start v0.6.4</code>. אם מופיע <code>v0.5.x</code> — קיצור הדרך בשולחן העבודה/תפריט התחל מצביע על התיקייה הישנה.</li><li>גרסאות ישנות (0.5.x) לא כללו סביבת ריצה וברירת המחדל שלהן הייתה חלון מוטמע → "איטי מאוד + חלון מעטפת עם כפתור מסתובב". עברו ל-0.6.4 וכוונו את קיצור הדרך אל ‎<code>zApkStart.exe</code>‎ החדש.</li></ul>
+<p><strong>② צפו אורך אתחול הוגן</strong></p>
+<p>אתחול קר כ-23–48 שניות, הפעלה מחדש עקב שינוי כיוון כ-50 שניות — שניהם בטווח התקין. בזמן הזה לחיצה על הסמל נראית כמו "שום דבר לא קורה" בעוד המכונה מאתחלת ברקע. <strong>אל תלחצו שוב ושוב</strong>: לחיצות מרובות גורמות למופע שני להשתלט על האמולטור, והסיום של המופע הראשון עם היציאה עלול לכבות את האמולטור ולהפיל את ההפעלה (ב-0.6.3 נוספה הגנת ‎<code>owner.pid</code>‎, אבל ההמתנה בתור עדיין נראית כמו "שום דבר לא קורה"). לחצו פעם אחת וחכו.</p>
+<p><strong>③ החלון המקורי לא השתלט → חזרה לחלון מוטמע עם כפתור הסיבוב</strong></p>
+<p>אם ביומן מופיעים <code>attach failed</code>, <code>emu:0</code> — סוכן החלונות לא מצא את חלון האמולטור והתוכנה חזרה למצב מוטמע (חלון המעטפת עם שורת כותרת וכפתור סיבוב שאתם רואים).</p>
+<ul><li>הפעלה דרך קישור תיקייה (junction) / נתיב לא סטנדרטי נוטה להפעיל זאת; ב-0.6.3 הסוכן מפענח את הנתיב האמיתי לפני ההתאמה. אם זה עדיין קורה, צרפו את היומן בדיווח.</li></ul>
+<p><strong>④ איפוס נתוני אנדרואיד (צעד אחרון)</strong></p>
+<p>הגדרות → כללי והתקנה → <strong>איפוס נתוני אנדרואיד</strong> (אישור כפול). מוחק יישומים מותקנים ואת הנתונים שלהם אבל שומר על המערכת עצמה; רשימת היישומים נשמרת והם מותקנים אוטומטית בפתיחה. מתאים למחיצת נתונים פגומה או לכל "לא נפתח" שנגרם מ-‎<code>/data</code>‎ שנכשל בעגינה.</p>
+<hr/>
+<h3 id="troubleshoot-boot">6.6 טבלת עזרה לשאר בעיות ההפעלה</h3>
+<p>zApkStart <strong>כבר מטפל אוטומטית</strong> ברוב שגיאות הריצה האלה; הטבלה מסבירה מה הוא עושה ומה נשאר לכם. אם הטיפול האוטומטי לא עוזר, ייצאו דוח אבחון לפי 5.3.</p>
+<div class="tw"><table><thead><tr><th>כותרת האבחון</th><th>טיפול אוטומטי</th><th>מה עוד אפשר לעשות</th></tr></thead><tbody><tr><td>האצת חומרה לא זמינה</td><td>חזרה להדמיה תוכנתית</td><td>להפעיל האצה לפי 6.1</td></tr><tr><td>הקצאת זיכרון נכשלה</td><td>הורדת זיכרון ומספר ליבות</td><td>לסגור תוכנות גוזלות זיכרון</td></tr><tr><td>פורט האמולטור תפוס</td><td>בחירה אוטומטית בפורט פנוי</td><td>לצאת מאמולטורים אחרים (Nox/MuMu/BlueStacks) או לאתחל</td></tr><tr><td>קובצי נעילה שנותרו / "Running multiple emulators with the same AVD"</td><td>ניקוי נעילות AVD וניסיון חוזר</td><td>לוודא שאין אמולטור אחר על אותה סביבת ריצה</td></tr><tr><td>תמונת מערכת חסרה/פגומה/לא תואמת לנתונים ישנים</td><td>אתחול מחדש עם נתוני משתמש נקיים</td><td>הגדרות → סביבת ריצה: למחוק את התמונה ולהוריד מחדש</td></tr><tr><td>snapshot של אתחול מהיר פגום</td><td>השלכת ה-snapshot הישן ואתחול קר</td><td>היציאה התקנה הבאה בונה אותו מחדש; או לכבות snapshots</td></tr><tr><td>רכיבי סביבת ריצה נמחקו / חסר ספריית VC++</td><td>—</td><td>להוסיף את zApkStart לרשימת החריגים של האנטי-וירוס ולחלץ מחדש; להתקין את Microsoft VC++ 2015-2022</td></tr><tr><td>אין מספיק שטח בדיסק</td><td>—</td><td>להעביר את תיקיית סביבת הריצה לכונן פנוי; לכבות snapshots / להקטין את מחיצת הנתונים</td></tr><tr><td>נתיב מכיל תווים לא אנגליים/מיוחדים</td><td>מעבר אוטומטי לנתיבים קצרים</td><td>להעביר את zApkStart לתיקיית ASCII פשוטה (למשל ‎<code>C:\zApkStart</code>‎)</td></tr><tr><td>למעבד חסר מערכת פקודות (AVX/SSE4)</td><td>—</td><td>בדרך כלל אזהרה והאתחול עדיין עובד; אחרת מחשב עם VT-x/AVX או מנוע ישן יותר</td></tr><tr><td>סביבת הריצה הנוכחית דוחה את מצב ה-GPU</td><td>בחירה מחדש במצב GPU אפשרי לפי גרסת המנוע</td><td>—</td></tr><tr><td>כרטיס מסך / שגיאה לא מוכרת</td><td>ניסיונות חוזרים אוטומטיים עם מספר סטים של פרמטרים</td><td>לעדכן מנהלי התקן גרפיים; או לכתוב טלאי תאימות; אם עדיין נכשל — ייצוא דוח אבחון</td></tr></tbody></table></div>
+<p><strong>סמלי שולחן העבודה מציגים את הסמל של zApkStart / סמלים ריקים</strong>: הגדרות → שילוב מערכת → <strong>בניית קיצורי דרך מחדש</strong> (כותב מחדש את קיצורי הדרך בשולחן העבודה ובתפריט התחל לפי רשימת היישומים הנוכחית, ומתקן יחד גם את הסמלים ואת זהות שורת המשימות). בנייה מחדש נדרשת גם אם קיצור דרך הוזז ממקומו והנתיב שלו התיישן.</p>
+<hr/>
+<h3 id="troubleshoot-sound">6.7 אין צליל ביישומים / הצליל חלש מדי</h3>
+<p><strong>תסמינים</strong>: וידאו וצלילי התראה ביישומי אנדרואיד שקטים לחלוטין; או שלשאר Windows יש צליל אבל רק ליישומים של zApkStart אין.</p>
+<p><strong>קודם להפריד</strong>: אם למערכת עצמה אין צליל — תקנו קודם את השמע של Windows; המשיכו להלן רק כשלשאר המערכת יש צליל ורק ליישומים של zApkStart אין.</p>
+<ol><li><strong>עוצמה והתקן פלט ב-Windows</strong>: לחצו על סמל השמע בשורת המשימות; ודאו ששום דבר לא מושתק, העוצמה לא 0, והתקן הפלט הוא האוזניות/הרמקולים שבהם אתם באמת משתמשים. פתחו את "מיקסר עוצמת הקול" ובדקו אם השורה של zApkStart / סביבת הריצה של אנדרואיד מושתקת בנפרד או עומדת על 0.</li><li><strong>עוצמה בתוך היישום</strong>: חלק מהיישומים מאפסים את עוצמת המדיה בכניסה ראשונה — הגבירו בהגדרות היישום או במקשי העוצמה של אנדרואיד. יישומי וידאו מסוימים גם משביתים השמעה אוטומטית בתוך היישום.</li><li><strong>מתג הצליל של zApkStart</strong>: הגדרות → ביצועים ומשאבים → <strong>שמע אנדרואיד</strong> חייב להיות מסומן. הזיהוי האוטומטי עוקב אחריו; אם הוא מוצא אותו כבוי, הוא מדווח תחת "הגדרות → אבחון ותיקון" ולחיצה אחת מפעילה אותו בחזרה. <strong>אחרי שינוי חובה להפעיל מחדש את סביבת הריצה של אנדרואיד</strong> (האמולטור מופעל עם ‎<code>-no-audio</code>‎ רק כשגם הצליל וגם המיקרופון כבויים; שינוי בזמן ריצה לא מחזיר צליל מיד).</li><li><strong>שירות השמע של Windows</strong>: ‎<code>Win+R</code>‎ והריצו <code>services.msc</code>, מצאו את <strong>Windows Audio</strong>, ודאו שהמצב "פועל" וסוג ההפעלה "אוטומטי". אם מנוטרל — קליק ימני → הפעלה; הזיהוי האוטומטי (מ-0.6.3) גם מזהה ומדווח זאת. ב-PowerShell כמנהל אפשר ‎<code>net start Audiosrv</code>‎.</li><li><strong>אוזניות Bluetooth / מספר התקני פלט</strong>: אחרי מעבר לאוזניות Bluetooth לפעמים Windows לא מעביר תוכניות פעילות. נתקו וחברו מחדש את האוזניות, או הפעילו מחדש את סביבת הריצה.</li><li><strong>עדיין שקט</strong>: ייצוא דוח אבחון תחת "הגדרות → אבחון ותיקון" ודיווח; הדוח כולל את מצב מתג הצליל ושירות השמע, וזה ממקם אם מדובר בתצורה, בשירות מערכת או ביישום עצמו.</li></ol>
+<blockquote>כשהתיקון האוטומטי נכשל, התוכנה פותחת את הסעיף הזה בעצמה. אם כיביתם את התראות הזיהוי האוטומטי, אפשר להגיע לכאן גם דרך כפתור "הדרכה" בפריט הבעיה או ה-<code>?</code> בשורת הכותרת.</blockquote>
+<hr/>
+<h3 id="troubleshoot-dll">6.8 כשל הפעלה בגרסת החנות / 0xC0000135 (טעינת DLL נכשלה)</h3>
+<p><strong>תסמינים</strong>: פתיחת יישום מסתובבת לנצח או יוצאת מיד; דוח האבחון מציג קוד יציאה ‎<code>0xC0000135</code>‎ (עשרוני: <code>3221225781</code>). נפוץ בעיקר בגרסאות <strong>המותקנות מחבילת Microsoft Store (MSIX)</strong>.</p>
+<p><strong>קודם כל, תיקון של טעות נפוצה</strong>: ‎<code>0xC0000135</code>‎ אומר רק "קובץ DLL כלשהו לא נטען". זה <strong>לא</strong> אומר אוטומטית שחסרה ספריית VC++, וזה <strong>לא</strong> אומר אוטומטית שהאנטי-וירוס מחק קבצים. שלוש אפשרויות חולקות את קוד היציאה הזה — אל תריצו שוב ושוב להתקין את VC++:</p>
+<ol><li><strong>מגבלת הנתיב של גרסת החנות (MSIX)</strong>: גרסאות חנות יושבות בתיקיית ‎<code>C:\Program Files\WindowsApps\...</code>‎ שהיא לקריאה בלבד. כשסביבת הריצה של אנדרואיד מריצה משם ‎<code>qemu</code>‎ וחבריה, התהליכים הבנים מאתרים DLL בנתיב יחסי, והפניית הנתיבים / בידוד הסביבה של הקונטיינר עלול לשבור זאת, ואז הם יוצאים עם ‎<code>0xC0000135</code>‎. זה ייחודי לגרסת החנות ואין כמות של התקנות VC++ חוזרות שתתקן זאת.</li><li><strong>חסרה באמת ספריית VC++</strong>: סביבת הריצה של אנדרואיד (Qt6 / qemu) תלויה ב-Microsoft VC++ 2015-2022 (x64). אם בהגדרות → אבחון ותיקון מדווח במפורש "חסרה ספריית VC++ (x64)" — זה <strong>נבדק על ידי בדיקה שקבצי ה-dll באמת קיימים</strong>, והתיקון שלו בלחיצה אחת מתקין אותה.</li><li><strong>האנטי-וירוס הסגיר קבצי סביבת ריצה</strong>: dll בתיקיית סביבת הריצה שהוסגר/נמחק מייצר גם את הקוד הזה. הוסיפו את תיקיית ההתקנה של zApkStart ואת תיקיית נתוני סביבת הריצה לרשימת החריגים של האנטי-וירוס, ואז התקינו פעם אחת מחדש.</li></ol>
+<p><strong>אבחון לפי הסדר:</strong></p>
+<ol><li><strong>לבדוק אם האבחון באמת מדווח VC++</strong>: אם במסך ההגדרות מופיע "חסרה ספריית VC++ (x64)", לחצו על התיקון שלו. אחרי ההתקנה הפעילו את המחשב מחדש ונסו שוב. אל תתקינו רק כי קוד היציאה הוא ‎<code>0xC0000135</code>‎ — קודם ודאו שהפריט הזה אכן מדווח.</li><li><strong>לא דווח VC++, ועדיין נכשל → כנראה בעיית הנתיב של גרסת החנות</strong>: זו הסיבה הסבירה ביותר כיום. נסו לפי הסדר:</li></ol>
+<ul><li>לצאת מ-zApkStart לחלוטין (סמל המגש → יציאה) ולפתוח מחדש;</li><li>לבדוק באנטי-וירוס את "גישה מבוקרת לתיקיות / הגנה מתוכנות כופר", להוסיף את zApkStart לחריגים ולהפעיל מחדש;</li><li>אם עדיין נכשל — להשתמש ב<strong>גרסה הניידת</strong> (<code>zApkStart-win64-portable</code> מההפצות של ה-fork ב-GitHub) בתיקיית ASCII פשוטה (למשל ‎<code>C:\zApkStart</code>‎) — הגרסה הניידת לא יושבת תחת WindowsApps ועוקפת לגמרי את המגבלה.</li></ul>
+<ol><li><strong>רוצים את שם ה-DLL שנכשל בדיוק</strong> (מתקדם): בדיווח, הנתון השווה ביותר הוא איזה dll חסר בפועל. ב-Event Viewer → Windows logs → Application מצאו את רשומת ‎<code>Application Error</code>‎ של zApkStart / emulator וקראו את השדה ‎<code>FaultingModuleName</code>‎; או ייצוא דוח אבחון תחת "הגדרות → אבחון ותיקון" וצירופו.</li><li><strong>מה אם adb גם קורס</strong>: אם ביומן האירועים מופיע בנפרד ‎<code>adb.exe</code>‎ עם ‎<code>0xC0000409</code>‎ — זו בעיה עצמאית (חריגה בחיבור מכשיר), לא הגורם הישיר ליציאת האמולטור; טפלו בהפעלה לפי 1–3 לעיל וציינו את בעיית ה-adb בנפרד בדיווח.</li></ol>
+<blockquote>הסעיף הזה נפתח אוטומטית: כשכשל הפעלה / כשל תיקון מסווג כבעיית DLL, התוכנה קופצת לכאן ישירות. אפשר להגיע לכאן גם ידנית דרך כפתור "הדרכה" בפריט הבעיה או ה-<code>?</code> בשורת הכותרת.</blockquote>
+<hr/>
+<h3 id="troubleshoot-mic">6.9 יישומים לא מצליחים להשתמש במיקרופון / שיחות קוליות והקלטה נכשלות</h3>
+<p><strong>תסמינים</strong>: הודעות קוליות, שיחות, הקלטה, "סריקה לדיבור" וכדומה נכשלים ביישומים, עם הודעות כמו "אין מיקרופון / התקן הקלטה לא זמין".</p>
+<ol><li><strong>מתג המיקרופון של zApkStart</strong>: הגדרות → ביצועים ומשאבים → <strong>קלט מיקרופון</strong> חייב להיות מסומן. מופעל כברירת מחדל; אם כובה, הזיהוי האוטומטי מדווח "קלט המיקרופון כבוי בהגדרות" תחת "הגדרות → אבחון ותיקון", ולחיצה אחת מפעילה אותו מחדש ומפעילה מחדש את סביבת הריצה. <strong>אחרי שינוי חובה להפעיל מחדש את סביבת הריצה של אנדרואיד</strong> (המתג קובע אם האמולטור חושף התקן הקלטה לאנדרואיד).</li><li><strong>הרשאת מיקרופון ב-Windows</strong>: ‎<code>הגדרות → פרטיות ואבטחה → מיקרופון</code>‎ — ודאו שגם "אפשר ליישומים גישה למיקרופון" וגם "אפשר ליישומי שולחן עבודה גישה למיקרופון" דלוקים. אנדרואיד רץ בתוך יישום שולחן עבודה; בלי זה המערכת לא תמסור מיקרופון בכלל.</li><li><strong>לוודא ש-Windows מקליט</strong>: הקליטו קטע עם "מקליט הקול" המובנה כדי לוודא שהמיקרופון עצמו והתקן הקלט (מיקרופון אוזניות / מיקרופון מצלמה / מיקרופון נפרד) עובדים ולא מושתקים.</li><li><strong>התקן הקלט הנכון</strong>: כשמחוברים כמה מיקרופונים, הגדירו את זה שרוצים כהתקן ברירת מחדל תחת "הגדרות צליל → קלט" ב-Windows; האמולטור משתמש בהתקן הקלט ברירת המחדל של המערכת.</li><li><strong>היחס בין צליל למיקרופון</strong>: רק כש<strong>גם</strong> "שמע אנדרואיד" <strong>וגם</strong> "קלט מיקרופון" כבויים מכבה האמולטור את כל תת-מערכת השמע לחיסכון במעבד; כל עוד אחד דלוק, השני עובד כרגיל.</li></ol>
+<blockquote>כשהמיקרופון כבוי, בצד היישום פשוט "לא נמצא התקן הקלטה" — בלי שגיאה רועשת. הזיהוי האוטומטי מדווח על זה ביוזמתו; אפשר להגיע לסעיף הזה גם ידנית דרך ה-<code>?</code> בשורת הכותרת.</blockquote>
+<hr/>
+<h3 id="troubleshoot-gpu">6.10 רינדור בכרטיס מסך ייעודי / מובנה (העדפת מאיץ גרפי)</h3>
+<p><strong>תסמינים</strong>: למחשב יש כרטיס מסך ייעודי אבל התמונה ביישומים מתנגדת ונשמטת; או שמחשב נייד מתחמם ומרוקן סוללה ומעדיפים את המובנה לחיסכון.</p>
+<p>zApkStart מרנדר את הגרפיקה של אנדרואיד עם ‎<code>-gpu host</code>‎ — רינדור חומרתי אמיתי דרך כרטיס המסך בפועל. מ-0.6.4 כל יצרן GPU (NVIDIA / AMD / Intel) ברירת המחדל היא host, במקום ההתנהגות הישנה שהכריחה AMD/Intel לרינדור תוכנתי — כלומר לוותר על הכרטיס מרצון. אם host קורס על מכונה נתונה, יש ירידה אוטומטית למנוע תוכנתי; השימוש לא נפגע.</p>
+<p><strong>בחירת הכרטיס</strong>: במחשבים עם גם ייעודי וגם מובנה, לפעמים Windows מקצה את האמולטור למובנה. הגדרות → ביצועים ומשאבים → <strong>העדפת מאיץ גרפי</strong> קובעת זאת במפורש:</p>
+<div class="tw"><table><thead><tr><th>אפשרות</th><th>מתאים ל</th></tr></thead><tbody><tr><td>ברירת מחדל של המערכת (מומלץ)</td><td>לתת ל-Windows לבחור לפי צריכת חשמל/עומס; הכי פשוט ברוב המחשבים</td></tr><tr><td>העדפת כרטיס ייעודי</td><td>משחקים, וידאו, כל מה שצריך קצב פריימים גבוה; יותר חום וצריכת סוללה</td></tr><tr><td>העדפת כרטיס מובנה</td><td>יישומים קלים, שהייה ברקע, חיסכון בסוללה בנייד; ביצועים נמוכים יותר</td></tr></tbody></table></div>
+<ul><li>זה עובד דרך "העדפת ביצועים גרפיים" של Windows (UserGpuPreferences) על תהליך האמולטור, <strong>תקף רק ב-Windows 10 1803 ומעלה</strong>; מערכות ישנות מתעלמות אוטומטית בלי להשפיע על ההפעלה.</li><li>נכנס לתוקף ב<strong>הפעלה הבאה של סביבת הריצה של אנדרואיד</strong>; מסך ההגדרות מציג אם היא כרגע בתוקף.</li><li>במנהלי התקן AMD ישנים host לפעמים קורס: עדכנו את מנהל ההתקן הגרפי; אם זה לא עוזר, הפעילו את טלאי ה-swangle לדוגמה של הכרטיס המובנה AMD הכלול בחבילה תחת "הגדרות → אבחון ותיקון → מנהל התקן · טלאי תאימות" כדי לקבע את הרינדור למנוע יציב יותר.</li></ul>
+<hr/>
+<h2 id="cli">7. שורת הפקודה</h2>
+<pre><code>zApkStart.exe                          פתיחת החלון הראשי
+zApkStart.exe &lt;נתיב\to.apk&gt;            התקנת APK
+zApkStart.exe --launch &lt;חבילה&gt;         הפעלת יישום ישירות (מה שקיצורי הדרך בשולחן העבודה מריצים)</code></pre>
+<hr/>
+<h2 id="data-dirs">8. נתונים ותיקיות</h2>
+<div class="tw"><table><thead><tr><th>שימוש</th><th>מיקום</th></tr></thead><tbody><tr><td>סביבת ריצה (adb / emulator / תמונות)</td><td>מובנית בחבילה, או ‎<code>%APPDATA%\zapkstart\runtime</code>‎ (נייד קל)</td></tr><tr><td>תמונת המערכת לאחר חילוץ</td><td>‎<code>%APPDATA%\zapkstart\system-images</code>‎</td></tr><tr><td>AVD / יישומים מותקנים / snapshots</td><td>‎<code>%APPDATA%\zapkstart\avd</code>‎</td></tr><tr><td>סמלי יישומים</td><td>‎<code>%APPDATA%\zapkstart\icons\&lt;חבילה&gt;.ico</code>‎</td></tr><tr><td>הגדרות ורשימת יישומים</td><td>‎<code>%APPDATA%\zApkStart\settings.json</code>‎ / ‎<code>apps.json</code>‎</td></tr><tr><td>יומני ריצה / דוחות אבחון</td><td>‎<code>%APPDATA%\zApkStart\logs\</code>‎</td></tr><tr><td>תיקייה משותפת Windows ↔ אנדרואיד</td><td>‎<code>%USERPROFILE%\zApkStartShared</code>‎ ↔ ‎<code>/sdcard/zApkStartShared</code>‎</td></tr></tbody></table></div>
+<blockquote>"איפוס נתוני אנדרואיד" מנקה רק את שכבת נתוני המשתמש; תמונת המערכת וקובצי ה-APK נשמרים. עדכון יישומים לא מאבד את סביבת הריצה, יישומים מותקנים או snapshots.  מומלץ להשאיר מקום פנוי נדיב בכונן C:‏: חילוץ התמונה + מחיצת הנתונים + snapshots יחד יכולים להגיע לכמה GB. מחסור בשטח גורם לכשלי התקנה/אתחול.</blockquote>
+<hr/>
+<h2 id="arm64">Windows ARM64</h2>
+<p>zApkStart מגיע ב-build ARM64 מקורי של היישום עצמו. מה שמנוע האנדרואיד יכול ולא יכול לעשות הוא עובדה חומרתית, והיישום מספר על זה ביושר:</p>
+<div class="tw"><table><thead><tr><th>מארח</th><th>המעטפת (היישום)</th><th>מנוע האנדרואיד</th></tr></thead><tbody><tr><td>Windows 10/11 x64</td><td>מקורי</td><td>מקורי (Google emulator / QEMU x64, האצה ב-AEHD או WHPX) — חוויה מלאה</td></tr><tr><td>Windows 11 ARM64</td><td>מקורי (build ARM64)</td><td><strong>לא זמין באופן מקורי.</strong> Google לא מפרסמת בינאריים של אמולטור ל-ARM64; מנוע ה-x64 תחת האמולציה של Windows מתורגם פעמיים בתוכנה ואינו שמיש ליישומים אמיתיים</td></tr></tbody></table></div>
+<ul><li>ב-ARM64, היישום מדווח על המצב בהפעלה הראשונה.</li><li>הרצת מנוע ה-x64 תחת האמולציה של Windows היא <strong>בחירה מפורשת</strong> (ניסיון אחד, עם ציפיות מוצהרות מראש) — לעולם לא ברירת מחדל.</li><li>מנוע אנדרואיד מקורי אמיתי ל-ARM64 מתועד — לא משוחרר — ב-‎<code>docs/zapkstart/arm64-research.md</code>‎ במאגר.</li><li>במכשירי ARM64 יש להשתמש ב-build הנייד הקל של ARM64; כל שאר המדריך (הגדרות, אבחון, עדכונים) חל באותה צורה.</li></ul>
+<hr/>
+<h2 id="support">9. קבלת עזרה ומשוב</h2>
+<p>כשמדווחים על בעיה, צרפו שלושה דברים — הם מקצרים מאוד את האבחון:</p>
+<ol><li><strong>דוח אבחון</strong>: הגדרות → אבחון ותיקון → ייצוא דוח אבחון;</li><li><strong>20 השורות האחרונות של app.log</strong>: ‎<code>%APPDATA%\zApkStart\logs\app.log</code>‎;</li><li><strong>הגרסה וסוג הגרסה שלכם</strong>, למשל "גרסת חנות 0.6.4" או "נייד מלא 0.6.4".</li></ol>
+<ul><li>GitHub: &lt;https://github.com/zeevrussak/zApkStart&gt; (Issues / Releases)</li></ul>
+<p>zApkStart הוא fork של ApkStart מאת RoutineMiku — הקרדיט למקור מופיע ב-‏NOTICE.md ובתוך היישום.</p>
+<hr/>
+<p>*המדריך הזה מתאים ל-v0.6.4 ומתעדכן עם כל גרסה. אם נוסח הממשק שונה במעט ממה שכתוב כאן — הנוסח בתוך היישום הוא הקובע.*</p>
+</main>
+</div>
+<div class="btnbar"><button onclick="window.print()">הדפסה / שמירה כ-PDF</button></div>
+<script>
+(function () {
+  var input = document.getElementById('tocSearch');
+  var links = Array.prototype.slice.call(document.querySelectorAll('#tocList a'));
+  if (!input) return;
+  input.addEventListener('input', function () {
+    var q = input.value.trim().toLowerCase();
+    links.forEach(function (a) { a.hidden = !!q && a.textContent.toLowerCase().indexOf(q) < 0; });
+  });
+  // 自动教程按锚点打开时，把命中的目录项滚进视野
+  if (location.hash) {
+    var hit = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (hit) setTimeout(function () { hit.scrollIntoView({ block: 'start' }); }, 80);
+  }
+}());
+</script>
+</body>
+</html>

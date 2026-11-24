@@ -1,0 +1,25 @@
+'use strict';
+// download / he — קטלוג עברית עבור src/core/download.js (החוזה: src/core/i18n.js)
+module.exports = {
+  too_many_redirects: 'יותר מדי הפניות מחדש',
+  connect_timeout: 'החיבור חרג מזמן ההמתנה',
+  resume_unverifiable: 'לא ניתן לאמת את הקובץ שהמשיך; השרת החזיר HTTP 416',
+  http_failed: 'ההורדה נכשלה עם HTTP {status}: {url}',
+  resume_range_mismatch: 'השרת החזיר טווח המשך שאינו תואם',
+  stalled_no_data: 'החיבור תקוע (אין נתונים זמן רב)',
+  stalled_timeout: 'החיבור תקוע (פסק זמן ללא נתונים)',
+  cancelled: 'בוטל',
+  connection_interrupted: 'החיבור נותק',
+  sha_mismatch: 'האימות נכשל: ציפיתי ל-{expected}… התקבל {actual}…',
+  chunk_request_rejected: 'בקשת המקטע נדחתה עם HTTP {status}',
+  chunk_rejected: 'המקטע נדחה עם HTTP {status}',
+  chunk_range_mismatch: 'השרת החזיר טווח מקטע שאינו תואם',
+  chunk_overflow: 'תשובת המקטע חרגה מהטווח המבוקש',
+  chunk_incomplete: 'המקטע לא הוחזר במלואו',
+  chunk_failed: 'הורדת המקטע נכשלה ({start}-{end}): {reason}',
+  chunk_failed_multi: 'המקטע נכשל ({start}-{end}): {reason}',
+  incomplete: 'ההורדה לא הושלמה: {size}/{total} בתים',
+  all_sources_failed: 'כל מקורות ההורדה נכשלו:\n{errors}',
+  no_urls: 'אין כתובות הורדה זמינות',
+  slow_source_rotated: 'המקור איטי מדי ({speed} KB/s); עובר למקור הבא',
+};

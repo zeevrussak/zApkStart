@@ -34,7 +34,7 @@ const ok = (c, m) => console.log(`${c ? '✓' : '✗'} ${m}`);
 
   const u = new Updater({
     currentVersion: '0.0.0',
-    exePath: path.join(install, 'ApkStart.exe'),
+    exePath: path.join(install, 'zApkStart.exe'),
     isPackaged: true,
     dataDir: sandbox,
   });
@@ -49,21 +49,21 @@ const ok = (c, m) => console.log(`${c ? '✓' : '✗'} ${m}`);
   }
 
   // 安装形态（有卸载器）应当挑 Setup.exe
-  fs.writeFileSync(path.join(install, 'Uninstall ApkStart.exe'), 'stub');
+  fs.writeFileSync(path.join(install, 'Uninstall zApkStart.exe'), 'stub');
   const u2 = new Updater({
     currentVersion: '0.0.0',
-    exePath: path.join(install, 'ApkStart.exe'),
+    exePath: path.join(install, 'zApkStart.exe'),
     isPackaged: true,
     dataDir: sandbox,
   });
-  check(u2.flavor === 'setup', '识别为安装版（存在 Uninstall ApkStart.exe）');
+  check(u2.flavor === 'setup', '识别为安装版（存在 Uninstall zApkStart.exe）');
 
   // ---- 3. 覆盖脚本真的能跑 ----
   const payload = path.join(sandbox, 'payload');
   fs.mkdirSync(path.join(payload, 'resources', 'app'), { recursive: true });
-  fs.writeFileSync(path.join(payload, 'ApkStart.exe'), 'new-exe');
+  fs.writeFileSync(path.join(payload, 'zApkStart.exe'), 'new-exe');
   fs.writeFileSync(path.join(payload, 'resources', 'app', 'main.js'), 'new-main');
-  fs.writeFileSync(path.join(install, 'ApkStart.exe'), 'old-exe');
+  fs.writeFileSync(path.join(install, 'zApkStart.exe'), 'old-exe');
 
   // 用一个立刻会退出的进程当「被等待的旧进程」
   const decoy = spawn(process.execPath, ['-e', 'setTimeout(()=>{},1500)'], { stdio: 'ignore' });
@@ -75,7 +75,7 @@ const ok = (c, m) => console.log(`${c ? '✓' : '✗'} ${m}`);
   check(/Copy-Item/.test(script) && /Wait-Process/.test(script), '脚本包含等待进程与覆盖动作');
 
   const ps = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-  // 不真去 Start-Process 拉起 ApkStart.exe（那是个假 exe），只验证复制
+  // 不真去 Start-Process 拉起 zApkStart.exe（那是个假 exe），只验证复制
   const body = script.replace(/if \(Test-Path[^\r\n]*relaunched' \}/, "'skipped relaunch'");
   const b64 = Buffer.from(body, 'utf16le').toString('base64');
   try {
@@ -86,9 +86,9 @@ const ok = (c, m) => console.log(`${c ? '✓' : '✗'} ${m}`);
     check(false, `覆盖脚本执行失败：${e.message}`);
   }
   await sleep(600);
-  const newExe = fs.readFileSync(path.join(install, 'ApkStart.exe'), 'utf8');
+  const newExe = fs.readFileSync(path.join(install, 'zApkStart.exe'), 'utf8');
   const newMain = fs.readFileSync(path.join(install, 'resources', 'app', 'main.js'), 'utf8');
-  check(newExe === 'new-exe', '安装目录里的 ApkStart.exe 已被替换');
+  check(newExe === 'new-exe', '安装目录里的 zApkStart.exe 已被替换');
   check(newMain === 'new-main', '子目录里的文件也替换成功');
 
   // ---- 4. apply() 真的起一个进程去替换（异步链路，不走网络）----
@@ -96,14 +96,14 @@ const ok = (c, m) => console.log(`${c ? '✓' : '✗'} ${m}`);
   const payload2 = path.join(sandbox, 'payload2');
   fs.mkdirSync(install2, { recursive: true });
   fs.mkdirSync(payload2, { recursive: true });
-  fs.writeFileSync(path.join(install2, 'ApkStart.exe'), 'old-exe');
+  fs.writeFileSync(path.join(install2, 'zApkStart.exe'), 'old-exe');
   fs.writeFileSync(path.join(install2, 'marker.txt'), 'old');
-  fs.writeFileSync(path.join(payload2, 'ApkStart.exe'), 'new-exe');
+  fs.writeFileSync(path.join(payload2, 'zApkStart.exe'), 'new-exe');
   fs.writeFileSync(path.join(payload2, 'marker.txt'), 'new');
 
   const u3 = new Updater({
     currentVersion: '0.0.0',
-    exePath: path.join(install2, 'ApkStart.exe'),
+    exePath: path.join(install2, 'zApkStart.exe'),
     isPackaged: true,
     dataDir: sandbox,
   });

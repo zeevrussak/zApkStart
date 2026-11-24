@@ -221,7 +221,7 @@ html, body {
   content: '';
   display: inline-block;
   width: 6px; height: 6px;
-  margin-right: 5px;
+  margin-inline-end: 5px;
   border-radius: 50%;
   vertical-align: 1px;
   background: currentColor;
@@ -308,7 +308,7 @@ html, body {
 
 /* 光晕 */
 .welcome-halo {
-  position: absolute; left: 50%; top: -120px;
+  position: absolute; inset-inline-start: 50%; top: -120px;
   width: 340px; height: 240px; transform: translateX(-50%);
   background: radial-gradient(closest-side, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 72%);
   pointer-events: none;

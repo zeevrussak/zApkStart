@@ -21,7 +21,7 @@ if (action === 'on') {
   const r = registerAssociation(exe, fs.existsSync(iconPath) ? iconPath : undefined,
     isDev ? `"${appDir}"` : undefined);
   console.log('已注册 .apk 关联：', r.progId);
-  console.log('现在在资源管理器中双击 .apk 即可安装到 ApkStart。');
+  console.log('现在在资源管理器中双击 .apk 即可安装到 zApkStart。');
 } else if (action === 'off') {
   unregisterAssociation();
   console.log('已取消 .apk 关联。');

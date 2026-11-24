@@ -1,0 +1,25 @@
+'use strict';
+// download / zh-CN — src/core/download.js 的用户可见文案（原文抽取，契约见 src/core/i18n.js）
+module.exports = {
+  too_many_redirects: '重定向次数过多',
+  connect_timeout: '连接超时',
+  resume_unverifiable: '无法验证续传文件，服务器返回 HTTP 416',
+  http_failed: '下载失败 HTTP {status}: {url}',
+  resume_range_mismatch: '服务器返回了不匹配的续传范围',
+  stalled_no_data: '连接停滞（长时间无数据）',
+  stalled_timeout: '连接停滞（无数据超时）',
+  cancelled: '已取消',
+  connection_interrupted: '连接被中断',
+  sha_mismatch: '校验失败：期望 {expected}… 实际 {actual}…',
+  chunk_request_rejected: '分块请求被拒绝 HTTP {status}',
+  chunk_rejected: '分块被拒绝 HTTP {status}',
+  chunk_range_mismatch: '服务器返回了不匹配的分块范围',
+  chunk_overflow: '分块响应超出请求范围',
+  chunk_incomplete: '分块未完整返回',
+  chunk_failed: '分块下载失败（{start}-{end}）：{reason}',
+  chunk_failed_multi: '分块失败（{start}-{end}）：{reason}',
+  incomplete: '下载不完整：{size}/{total} 字节',
+  all_sources_failed: '所有下载源均失败：\n{errors}',
+  no_urls: '没有可用的下载地址',
+  slow_source_rotated: '该源速度过低（{speed} KB/s），换源重试',
+};

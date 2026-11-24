@@ -1,6 +1,6 @@
 # 便携 adb
 
-把 Android platform-tools 解压到本目录（应出现 `adb.exe`），ApkStart 会优先使用它：
+把 Android platform-tools 解压到本目录（应出现 `adb.exe`），zApkStart 会优先使用它：
 
 ```
 tools/platform-tools/
@@ -9,7 +9,7 @@ tools/platform-tools/
 
 下载地址：https://developer.android.com/tools/releases/platform-tools
 
-如果本目录为空，ApkStart 会依次尝试：
+如果本目录为空，zApkStart 会依次尝试：
 
 1. 设置中手动指定的 adb 路径
 2. 本目录

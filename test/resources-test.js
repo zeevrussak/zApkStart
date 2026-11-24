@@ -15,6 +15,8 @@ const {
   hostProfile, memoryLimits, clampMemoryMB, clampCores, memVerdict,
   diskRequiredMB, diskVerdict, diskLimits, clampDataGB, storageVerdict,
 } = require('../src/core/resources');
+// 磁盘预检文案断言（走 t() 的 resources 命名空间）钉住中文（i18n 默认 auto 会跟随本机语言，见 drivers-test 同款做法）
+require('../src/core/i18n').setActiveT('zh-CN', '');
 
 let passed = 0;
 let failed = 0;
@@ -162,7 +164,7 @@ const GB = 1024 * 1024 * 1024;
     const v = diskVerdict(10 * 1024, 60 * 1024);
     assert.equal(v.ok, false);
     assert.ok(/磁盘空间不足/.test(v.message), v.message);
-    assert.ok(/ApkStart 运行时所在磁盘/.test(v.message), v.message);
+    assert.ok(/zApkStart 运行时所在磁盘/.test(v.message), v.message);
   });
 
   test('diskVerdict 读不到剩余空间时不拦', () => {

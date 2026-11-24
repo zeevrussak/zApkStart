@@ -2,13 +2,18 @@
 /**
  * 独立运行相关的纯 Node 测试：不需要 Electron、不需要模拟器、不需要联网。
  *
- * 守的是一条产品底线（0.5.6 起升级为硬约束）：
- *   **ApkStart 在任何机器、任何设置、任何残留配置下都只跑自带运行时。**
+ * 守的是一条产品底线（0.5.6 起升级为硬约束；0.7.x 按 docs/zapkstart/wsa-backend.md
+ * **收窄但保留**）：
+ *   **ApkStart 在任何机器上都只跑「自带运行时」或「用户显式选择且探测确认的 WSA」；
+ *   绝不探测、接管、驱动任何第三方模拟器（MuMu / 雷电 / 蓝叠 / FydeOS）。**
  *
- * 具体要盯住三件事：
- *   1. 代码里根本没有第三方底座（MuMu / 雷电 / 蓝叠 / WSA / FydeOS）的实现文件；
- *   2. 就算 settings.json 里写着 mode=mumu / fydeos / attach，也只会拿到 builtin；
- *   3. 打出来的包里不许出现任何第三方模拟器的二进制或目录。
+ * 具体要盯住五件事：
+ *   1. 代码里没有第三方模拟器底座（MuMu / 雷电 / 蓝叠 / FydeOS）的实现文件
+ *      （WSA 是例外：检测式、只经 adb、opt-in）；
+ *   2. mode 放行是保守的：残留值一律 builtin；wsa 只在包探测确认时放行，否则回落 builtin；
+ *   3. autoPick 永远 builtin-only，绝不做任何自动选择（没有「装了就用」）；
+ *   4. store 的 mode 白名单是精确匹配（builtin|wsa），其它值就地压回；
+ *   5. 打出来的包里不许出现任何第三方模拟器的二进制或目录。
  *
  * 运行：node test/standalone-test.js
  */
@@ -52,12 +57,12 @@ function touch(dir, rel, bytes = 8) {
     assert.equal(settings.engine.mode, 'builtin', `默认 mode=${settings.engine.mode}`);
   });
 
-  test('注册表里只有 builtin，没有第二个底座', () => {
-    assert.equal(backends.REGISTRY.length, 1, `注册表有 ${backends.REGISTRY.length} 个底座`);
-    assert.deepEqual(backends.describe().map((d) => d.id), ['builtin']);
+  test('注册表里只有 builtin 与 wsa 两个底座', () => {
+    assert.equal(backends.REGISTRY.length, 2, `注册表有 ${backends.REGISTRY.length} 个底座`);
+    assert.deepEqual(backends.describe().map((d) => d.id), ['builtin', 'wsa']);
   });
 
-  test('任何残留的 mode 都只会创建 builtin（mumu / fydeos / attach / 乱填）', () => {
+  test('mode 放行矩阵：残留值一律 builtin；wsa 只在探测确认时放行（保守放行）', () => {
     for (const mode of ['mumu', 'fydeos', 'attach', 'ldplayer', 'whatever', '']) {
       const made = backends.create({
         appRoot: ROOT, settings: { engine: { mode } }, store, log: () => {},
@@ -65,6 +70,17 @@ function touch(dir, rel, bytes = 8) {
       assert.equal(made.id, 'builtin', `mode=${mode} 却创建了 ${made.id}`);
       assert.equal(made.backend.constructor.id, 'builtin', '实例类型不是 BuiltinBackend');
     }
+    // wsa + 探测确认（注入 wsaAvailable=true）→ WsaBackend
+    const wsa = backends.create({
+      appRoot: ROOT, settings: { engine: { mode: 'wsa' } }, store, log: () => {}, wsaAvailable: true,
+    });
+    assert.equal(wsa.id, 'wsa', 'mode=wsa 且探测确认时应创建 WsaBackend');
+    assert.equal(wsa.backend.constructor.id, 'wsa', '实例类型不是 WsaBackend');
+    // wsa + 探测未确认（false / 缓存为空）→ 回落 builtin
+    const fb1 = backends.create({
+      appRoot: ROOT, settings: { engine: { mode: 'wsa' } }, store, log: () => {}, wsaAvailable: false,
+    });
+    assert.equal(fb1.id, 'builtin', 'wsa 探测未确认时应回落 builtin');
   });
 
   test('显式传别的 id 也压不过去（回退路径不会再建出第三方底座）', () => {
@@ -74,19 +90,25 @@ function touch(dir, rel, bytes = 8) {
     assert.equal(made.id, 'builtin', '显式 id=mumu 仍然被接受了');
   });
 
-  test('自动挑选不再探测任何外部运行时', async () => {
-    // 同步断言：autoPick 必须是「直接返回 builtin」，源码里不许出现 probe()
+  test('自动挑选不做探测；mode 放行必须带探测闸（源码级）', () => {
     const src = read('src', 'core', 'backends', 'index.js');
-    assert(!/\.probe\(/.test(src), '注册表仍在探测外部模拟器');
+    // 新契约：create 的 wsa 放行必须先过探测闸（wsaAvailable / wsaEngineNow）
+    assert(/wsaAvailable/.test(src) && /wsaEngineNow/.test(src), 'create 缺少 wsa 探测闸');
+    assert(/mode === 'wsa'/.test(src), 'create 没有精确匹配 mode===');
+    // 反抢不变式：autoPick 永远 builtin-only，绝不在「非 wsa」时做任何自动选择
+    const pick = src.slice(src.indexOf('async function autoPick'));
+    assert(!/\.probe\(/.test(pick), 'autoPick 仍在探测');
+    assert(/builtin-only/.test(pick), 'autoPick 不再是 builtin-only');
+    // 注册表本体不许出现第三方模拟器
     assert(!/mumu|fydeos|ldplayer|bluestacks/i.test(src.replace(/[\s\S]*?const REGISTRY[\s\S]*?\];/, '')),
       '注册表里还有第三方底座');
   });
 
   console.log('\n[独立运行 · 第三方底座代码已删除]');
 
-  test('backends/ 下只有 base / builtin / index', () => {
+  test('backends/ 下只有 base / builtin / index / wsa', () => {
     const files = fs.readdirSync(path.join(ROOT, 'src', 'core', 'backends')).sort();
-    assert.deepEqual(files, ['base.js', 'builtin.js', 'index.js'], `实际：${files.join(', ')}`);
+    assert.deepEqual(files, ['base.js', 'builtin.js', 'index.js', 'wsa.js'], `实际：${files.join(', ')}`);
   });
 
   test('mumu / fydeos / mumu-compat / frame 模块都不在了', () => {
@@ -116,9 +138,12 @@ function touch(dir, rel, bytes = 8) {
     assert(/id="setEngineLabel"/.test(html), '设置页缺少只读的运行时说明');
   });
 
-  test('持久化层把残留的 mode / mumu* 字段就地改写', () => {
+  test('持久化层用精确匹配白名单压回 mode（wsa 可存活，其它一律 builtin）', () => {
     const src = read('src', 'core', 'store.js');
-    assert(/s\.engine\.mode = 'builtin'/.test(src), 'getSettings 没有强制 mode=builtin');
+    assert(/ENGINE_MODES/.test(src) && /new Set\(\['builtin', 'wsa'\]\)/.test(src),
+      'getSettings 没有精确匹配白名单（builtin|wsa）');
+    assert(/!ENGINE_MODES\.has\(s\.engine\.mode\)\) s\.engine\.mode = 'builtin'/.test(src),
+      '白名单外没有压回 builtin');
     assert(/mumuPath/.test(src) && /delete s\.engine\[k\]/.test(src), '没有清理残留的第三方字段');
   });
 

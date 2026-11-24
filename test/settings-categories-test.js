@@ -118,7 +118,7 @@ test('实现了切换、过滤与记忆', () => {
   assert(appJs.includes('function applySettingsFilter'), '应有可见性过滤函数');
   assert(appJs.includes('function groupMatches'), '应有搜索匹配函数');
   assert(appJs.includes('function focusGroup'), '应有定位到分组的函数');
-  assert(appJs.includes('apkstart.settings.cat'), '应记住上次停留的分类');
+  assert(appJs.includes('zapkstart.settings.cat'), '应记住上次停留的分类');
 });
 
 test('搜索是跨分类的（否则搜到了却看不见）', () => {

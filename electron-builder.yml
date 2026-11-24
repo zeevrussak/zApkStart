@@ -1,6 +1,6 @@
-appId: com.apkstart.win
-productName: ApkStart
-copyright: Copyright © 2026 ApkStart
+appId: com.zapkstart.app
+productName: zApkStart
+copyright: Copyright (c) 2026 ApkStart contributors, (c) 2026 zApkStart contributors
 
 directories:
   output: dist/release
@@ -14,21 +14,29 @@ files:
   - LICENSE
   - "!**/*.map"
   - "!**/node_modules/**"
-  # 运行时解压 .xz 镜像用（NAPI 预编译，无 ABI 问题）
+  # 运行时解压 .xz 镜像用（NAPI 预编译，无 ABI 问题）。
+  # x64 与 arm64 两个预编译都带：electron-builder 没有 per-arch files 过滤，
+  # 两个平台各自的 napi 二进制只有约 100KB 级别，运行时 process.arch 自动选对的那份。
   - "node_modules/@napi-rs/lzma/**"
   - "node_modules/@napi-rs/lzma-win32-x64-msvc/**"
+  - "node_modules/@napi-rs/lzma-win32-arm64-msvc/**"
   - "!node_modules/@napi-rs/lzma/*.md"
   - "!node_modules/@napi-rs/lzma/*.ts"
   - "!node_modules/@napi-rs/lzma/browser-entry.*"
 
-# 只保留中英文界面语言（Electron locales 从 41MB 降到 ~3MB）
+# 只保留用到的界面语言（Electron locales 从 41MB 降到 ~4MB）。
+# he = 希伯来语（zApkStart 新增）。注意 build/pack.js 的 KEEP_LOCALES 是**另一份**
+# 过滤清单（管便携包），两处必须同步改。
 electronLanguages:
   - zh-CN
   - zh-TW
   - en-US
+  - he
 
 # 完整运行时（emulator + platform-tools + 系统镜像），由 build/prepare-runtime.js 生成。
 # 打进包里之后首次启动不再需要任何下载。
+# 内容是 x64 的（Google 不发布 Windows-ARM64 模拟器）——因此 ARM64 目标**不带**
+# extraResources：arm64 包是运行时无关的轻量壳，首次启动按 arch 引导下载。
 extraResources:
   - from: build/runtime
     to: runtime
@@ -36,73 +44,65 @@ extraResources:
       - "**/*"
       - "!.prepared"
 
+# ---------------- 便携 zip（arm64 运行时无关包） ----------------
+# zip 目标没有独立配置段：产物名由 CI 的 arm64 作业用 -c.artifactName 指定
+# （${productName}-${version}-win64-arm64-portable.zip），本地等价命令见 README。
+
 win:
+  # x64：NSIS 安装包（与上游一致的完整体验）。
+  # arm64：NSIS + zip。CI 的 arm64 作业用 electron-builder 交叉编译（x64 runner 即可），
+  # 产物用 scripts/check-pe-arch.js 验证 Machine == ARM64。
   target:
     - target: nsis
       arch:
         - x64
+    - target: nsis
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
   icon: src/ui/assets/appicon.ico
   # 安装到当前用户目录，不写系统盘、不要求管理员权限
   requestedExecutionLevel: asInvoker
 
-# ---------------- 微软商店（MSIX） ----------------
-# appx 目标不在默认构建列表里：它只有出商店包时才用（npm run build:appx），
-# 平时 npm run build:exe 仍然只出 NSIS 安装包。
-#
-# identityName / publisher 必须逐字等于 Partner Center →
-#   Product management → Product identity 里的
-#   Package/Identity/Name 与 Package/Identity/Publisher。
-# 下面这两个值是 2026-11-16 从 Partner Center 抄下来的确认值；
-# 换产品身份时改这里（或设 APKSTART_MSIX_IDENTITY / APKSTART_MSIX_PUBLISHER）。
-# 注意：占位 Publisher（CN=RoutineMiku）打出来的包商店会直接拒收。
-appx:
-  identityName: RoutineMiku.ApkStart
-  publisher: "CN=58CA1DED-8AB3-4D0D-AF50-62C9B781AA4D"
-  publisherDisplayName: RoutineMiku
-  displayName: ApkStart
-  applicationId: ApkStart
-  # 全信任桌面应用唯一必需的能力。不要加 unvirtualizedResources /
-  # broadFileSystemAccess —— Store 基本不批，而且本应用靠「数据目录挪到
-  # %USERPROFILE%\ApkStart」绕开了 AppData 写重定向，不需要它们。
-  capabilities:
-    - runFullTrust
-  languages:
-    - zh-CN
-    - en-US
-  minVersion: 10.0.19041.0
-  maxVersionTested: 10.0.22621.0
+# ---------------- Microsoft Store（MSIX） ----------------
+# zApkStart fork 不发布商店版本：上游的 Partner Center 身份（RoutineMiku.ApkStart /
+# CN=58CA1DED-…）属于原作者，fork 使用它就是冒充。appx 配置整段移除；
+# 本地自签名测试包仍可用 `npm run build:msix`（build/msix.js，身份走环境变量覆盖）。
+# 若未来要上架，先注册自己的 Partner Center 身份再补回这段配置。
 
 nsis:
-  # 不再是「一键装到 C 盘默认目录」：改为标准向导，允许用户选择安装位置
-  # （装到非系统盘可减轻 C 盘压力；运行时数据目录另在设置里单独指定）。
+  # 标准向导，允许选择安装位置（装到非系统盘可减轻 C 盘压力；运行时数据目录另在设置里单独指定）。
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-  displayLanguageSelector: false
+  # zApkStart 面向英语/希伯来语用户：安装向导跟随系统语言，并允许手动选择。
+  displayLanguageSelector: true
+  installerLanguages:
+    - en_US
+    - he_IL
   # always：即使桌面上已有同名 .lnk 也重建一次。
   # 默认的 true 只在「不存在」时才创建，某些机器上（安全软件拦截、桌面被
   # OneDrive 重定向、旧版残留了指向已删目录的坏快捷方式）会出现装完没图标，
   # 或者图标还指着旧 exe。always 保证每次安装后都指向当前安装目录。
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  artifactName: ApkStart-${version}-Setup.exe
+  # ${arch} 区分 x64 / arm64 安装包（updater 按本机二进制架构挑选资产）。
+  artifactName: ${productName}-${version}-${arch}-Setup.${ext}
   # 卸载前先结束仍在运行的运行时进程，避免文件被锁导致无法删除
-  # （火绒等粉碎工具删不掉，多半是 qemu/adb 进程还驻留）。
   include: build/installer.nsh
   # 安装包本身已含完整运行时（emulator + 系统镜像 .gz），装完首次启动
-  # 自动把镜像展开到用户目录，之后不再联网下载任何东西。
+  # 自动把镜像展开到用户目录，之后不再联网下载任何东西。（x64 安装包如此；
+  # arm64 包不含运行时，见上面 extraResources 的说明。）
 
 # 压缩级别：normal（zlib）。镜像本身已是 xz/gz，NSIS 这层只压 Electron 的 dll，
 # normal 与 maximum 体积差别很小，但 maximum(LZMA) 会让打安装包慢十几分钟。
-# 注：CI 用 PowerShell 跑 npx 时，行内 -c.compression=xxx 会被拆参、被当成配置文件路径，
-# 因此压缩级别统一在这里设置，不在 workflow 里用 -c 行内覆盖。
 compression: normal
 
 # ---------------- Linux / FydeOS ----------------
-# 这一段原来写在 package.json 的 "build" 字段里。electron-builder 26 的 schema
-# 已经不再接受 linux.desktop 那个形状，导致任何一次构建（包括 Windows）都在
-# 配置校验阶段直接失败。统一搬到这个文件、用 --config electron-builder.yml
-# 显式指定，就不会再被 package.json 里的旧配置抢走。
+# zApkStart fork 只维护 Windows。上游的 Linux/AppImage 目标保留在此仅为
+# 构建配置不报错（README 已声明 fork 不支持 Linux）；不测试、不维护。
 linux:
   target:
     - AppImage
@@ -110,6 +110,6 @@ linux:
   icon: src/ui/assets/logo-128.png
   desktop:
     entry:
-      Name: ApkStart
-      Comment: 在 FydeOS / Linux 上管理安卓应用
+      Name: zApkStart
+      Comment: Run Android apps on the desktop
       Categories: Utility;

@@ -12,6 +12,7 @@ const path = require('path');
 const { hookOptions } = require('./pointer');
 const store = require('./store');
 const { physicalRect } = require('./geometry');
+const brand = require('./brand');
 
 const TITLEBAR_H = 38;
 /**
@@ -172,7 +173,7 @@ class AppWindow {
       resizable: true,
       maximizable: true,
       backgroundColor: '#0b0c0e',
-      title: label || 'ApkStart',
+      title: label || brand.PRODUCT,
       icon: iconFile,
       webPreferences: {
         preload: path.join(__dirname, '..', 'preload.js'),
@@ -189,7 +190,7 @@ class AppWindow {
     // 这里挡住，让 OS 标题一直等于应用名（任务栏悬浮提示、Alt+Tab 都靠它）。
     this.win.webContents.on('page-title-updated', (e) => {
       e.preventDefault();
-      try { this.win.setTitle(label || 'ApkStart'); } catch (_) { /* 窗口可能已销毁 */ }
+      try { this.win.setTitle(label || brand.PRODUCT); } catch (_) { /* 窗口可能已销毁 */ }
     });
     this.win.once('ready-to-show', () => {
       // 独立窗口模式下，安卓画面在模拟器自己的原生窗口里，我们这层壳没有内容可显示，
@@ -356,7 +357,7 @@ class AppWindow {
     // 一 show 出来就会先被套上那个旧标题 —— 切换应用时窗口会以**上一个应用的
     // 名字**闪 0.5 秒，首次启动则先显示 "Android Emulator - apkstart:5554"。
     // 以前的顺序是 show() → setTitle()，所以那半秒一定看得到。
-    const title = this.state && this.state.label ? this.state.label : 'ApkStart';
+    const title = this.state && this.state.label ? this.state.label : brand.PRODUCT;
     await this.agent.setTitle(title).catch(() => {});
     // 图标和标题都在窗口 show 之前设好：既避免旧标题/绿色机器人图标先闪一下，
     // 又把原来「setTitle 后等 600ms + show + setIcon 后再等 300ms」两次等待合并成

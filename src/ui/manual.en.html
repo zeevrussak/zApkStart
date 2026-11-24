@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zApkStart User Manual and Troubleshooting Guide</title>
+<style>
+:root{--bg:#ffffff;--fg:#1f2328;--mut:#57606a;--line:#d0d7de;--code:#eff1f3;--accent:#0969da;--accent-soft:#ddf4ff;--warn:#9a6700;--warn-bg:#fff8c5;--head:#f6f8fa;--tbl:#f6f8fa}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{display:flex;max-width:1180px;margin:0 auto}
+aside{position:sticky;top:0;height:100vh;overflow:auto;width:280px;flex:0 0 280px;border-right:1px solid var(--line);padding:24px 18px;background:var(--head)}
+aside h2{font-size:15px;margin:0 0 14px;letter-spacing:.5px}
+aside a{display:block;color:var(--mut);text-decoration:none;padding:3px 8px;border-radius:6px;font-size:13.5px;line-height:1.45}
+aside a:hover{background:var(--accent-soft);color:var(--accent)}
+#tocSearch{width:100%;margin-bottom:12px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font:13px/1.4 inherit;background:#fff;color:var(--fg)}
+#tocSearch:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.toc-l3{padding-left:22px!important;font-size:12.5px!important;color:#8c959f!important}
+main{flex:1;min-width:0;padding:40px 48px 80px}
+h1{font-size:30px;margin:0 0 8px;padding-bottom:16px;border-bottom:2px solid var(--line)}
+h2{font-size:23px;margin:42px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:16px}
+h3{font-size:18px;margin:30px 0 12px;scroll-margin-top:16px}
+h4{font-size:16px;margin:22px 0 8px}
+p{margin:12px 0}
+a{color:var(--accent)}
+code{background:var(--code);padding:2px 6px;border-radius:6px;font:13.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{background:var(--code);padding:16px 18px;border-radius:8px;overflow:auto;border:1px solid var(--line)}
+pre code{background:none;padding:0}
+blockquote{margin:16px 0;padding:10px 16px;border-left:4px solid var(--warn);background:var(--warn-bg);color:#633c01;border-radius:0 8px 8px 0}
+blockquote p{margin:0}
+ul,ol{margin:12px 0;padding-left:26px}
+li{margin:5px 0}
+hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+.tw{overflow:auto;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--tbl);font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fbfcfd}
+.btnbar{position:fixed;right:22px;bottom:22px;display:flex;gap:8px}
+.btnbar button{border:1px solid var(--line);background:#fff;color:var(--fg);border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.btnbar button:hover{border-color:var(--accent);color:var(--accent)}
+@media (max-width:880px){aside{display:none}main{padding:24px 20px 60px}h1{font-size:25px}}
+@media print{aside,.btnbar{display:none}main{padding:0;max-width:none}h2{page-break-after:avoid}table,pre,blockquote{page-break-inside:avoid}a{color:inherit;text-decoration:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside><h2>Contents</h2>
+<input id="tocSearch" type="search" placeholder="Filter contents (Ctrl+F searches the full text)" autocomplete="off" />
+<div id="tocList"><a class="toc-l2" href="#contents">Contents</a>
+<a class="toc-l2" href="#intro">1. zApkStart in 30 seconds</a>
+<a class="toc-l2" href="#setup">2. Installation and first launch</a>
+<a class="toc-l3" href="#setup-variants">2.1 Pick the build that fits you</a>
+<a class="toc-l3" href="#setup-first-run">2.2 What happens on first launch</a>
+<a class="toc-l2" href="#usage">3. Everyday use</a>
+<a class="toc-l3" href="#usage-install">3.1 Installing apps</a>
+<a class="toc-l3" href="#launch">3.2 Opening apps</a>
+<a class="toc-l3" href="#usage-window">3.3 Windows and display</a>
+<a class="toc-l3" href="#shortcuts">3.4 Keyboard shortcuts</a>
+<a class="toc-l3" href="#shared-folder">3.5 File exchange (Windows ↔ Android)</a>
+<a class="toc-l3" href="#settings">3.6 Settings page guide</a>
+<a class="toc-l3" href="#updates">3.7 In-app updates</a>
+<a class="toc-l2" href="#concepts">4. Three core concepts (the key to understanding errors)</a>
+<a class="toc-l3" href="#concepts-image">4.1 Runtime / system image</a>
+<a class="toc-l3" href="#concepts-accel">4.2 Hardware acceleration</a>
+<a class="toc-l3" href="#concepts-arm">4.3 The ARM translation layer</a>
+<a class="toc-l2" href="#checkup">5. Do this first when something breaks: self-check and auto-detection</a>
+<a class="toc-l3" href="#checkup-hardware">5.1 Machine self-check · automatic configuration</a>
+<a class="toc-l3" href="#autodetect">5.2 Auto-detection (automatic debug)</a>
+<a class="toc-l3" href="#diag-report">5.3 Exporting a diagnostic report</a>
+<a class="toc-l3" href="#auto-tutorial">5.4 The built-in manual and automatic tutorials</a>
+<a class="toc-l2" href="#faq">6. Solutions to common problems</a>
+<a class="toc-l3" href="#troubleshoot-accel">6.1 &quot;Hardware acceleration is not enabled&quot; / slow boot</a>
+<a class="toc-l3" href="#install">6.2 Install failures (INSTALL_FAILED_*)</a>
+<a class="toc-l3" href="#troubleshoot-arm">6.3 No ARM translation layer in the system image / ARM apps fail to install or crash</a>
+<a class="toc-l3" href="#troubleshoot-adb">6.4 adb unauthorized (allow USB debugging)</a>
+<a class="toc-l3" href="#troubleshoot-launch">6.5 Double-clicking the icon does nothing / endless spinner / a window with a rotate button</a>
+<a class="toc-l3" href="#troubleshoot-boot">6.6 Quick reference for other startup problems</a>
+<a class="toc-l3" href="#troubleshoot-sound">6.7 No sound in apps / sound is very quiet</a>
+<a class="toc-l3" href="#troubleshoot-dll">6.8 Store build fails to start / 0xC0000135 (DLL load failure)</a>
+<a class="toc-l3" href="#troubleshoot-mic">6.9 Apps can&#x27;t use the microphone / voice calls and recording fail</a>
+<a class="toc-l3" href="#troubleshoot-gpu">6.10 Discrete / integrated GPU rendering (graphics preference)</a>
+<a class="toc-l2" href="#cli">7. Command-line reference</a>
+<a class="toc-l2" href="#data-dirs">8. Data and directories</a>
+<a class="toc-l2" href="#arm64">Windows ARM64</a>
+<a class="toc-l2" href="#support">9. Getting help and giving feedback</a></div>
+</aside>
+<main>
+<h1 id="overview">zApkStart User Manual and Troubleshooting Guide</h1>
+<blockquote>Version: v0.6.4 · Platforms: Windows 10/11 x64 &amp; ARM64 · Updated: 2026-11-23  zApkStart is a Windows app runner: <strong>it installs Android apps like native Windows software — each app appears on the desktop and starts with a double-click.</strong> This manual first teaches you how to use the app, then gives concrete, follow-along solutions organized by "symptom". Every step maps to a button or menu that really exists in the software.</blockquote>
+<hr/>
+<h2 id="contents">Contents</h2>
+<ol><li><a href="#intro">1. zApkStart in 30 seconds</a></li><li><a href="#setup">2. Installation and first launch</a></li><li><a href="#usage">3. Everyday use</a></li><li><a href="#concepts">4. Three core concepts (the key to understanding errors)</a></li><li><a href="#checkup">5. Do this first when something breaks: self-check and auto-detection</a></li><li><a href="#faq">6. Solutions to common problems</a></li></ol>
+<ul><li><a href="#troubleshoot-accel">6.1 "Hardware acceleration is not enabled" / slow boot</a></li><li><a href="#install">6.2 Install failures (INSTALL_FAILED_*)</a></li><li><a href="#troubleshoot-arm">6.3 No ARM translation layer in the system image / ARM apps fail to install or crash</a></li><li><a href="#troubleshoot-adb">6.4 adb unauthorized (allow USB debugging)</a></li><li><a href="#troubleshoot-launch">6.5 Double-clicking the icon does nothing / endless spinner / a window with a rotate button</a></li><li><a href="#troubleshoot-boot">6.6 Quick reference for other startup problems</a></li><li><a href="#troubleshoot-sound">6.7 No sound in apps / sound is very quiet</a></li><li><a href="#troubleshoot-dll">6.8 Store build fails to start / 0xC0000135 (DLL load failure)</a></li><li><a href="#troubleshoot-mic">6.9 Apps can't use the microphone / voice calls and recording fail</a></li><li><a href="#troubleshoot-gpu">6.10 Discrete / integrated GPU rendering (graphics preference)</a></li></ul>
+<ol><li><a href="#cli">7. Command-line reference</a></li><li><a href="#data-dirs">8. Data and directories</a></li><li><a href="#support">9. Getting help and giving feedback</a></li></ol>
+<ul><li><a href="#arm64">Windows ARM64</a></li></ul>
+<hr/>
+<h2 id="intro">1. zApkStart in 30 seconds</h2>
+<pre><code>Desktop shortcut (a real app icon .lnk)
+      │ double-click
+      ▼
+zApkStart.exe --launch &lt;package&gt;
+      │ runtime not booted? → started automatically (Android 14 emulator, bundled or downloaded on first run)
+      ▼
+App opens via the launch entry the system resolves (not the hardcoded main Activity from the APK)
+      ▼
+Emulator window = app window (retitled title, custom icon, portrait ratio, fullscreen centered)</code></pre>
+<p><strong>What makes it different</strong></p>
+<ul><li>🖱️ <strong>Double-click an .apk to install</strong>: after the file association is registered, double-clicking an APK → auto-parse → install → desktop icon created.</li><li>🧩 <strong>One desktop icon per app</strong>: the icon is extracted offline from inside the APK; double-clicking the icon goes straight into the app.</li><li>🪟 <strong>An app is just a window</strong>: native rendering, fills the screen height and centers in fullscreen, window mode is draggable and resizable, and each app remembers its own size.</li><li>🔍 <strong>Findable from Windows search</strong>: desktop + Start menu (<code>Programs\zApkStart\</code>) dual shortcuts.</li><li>📁 <strong>Shared data</strong>: <code>%USERPROFILE%\zApkStartShared</code> ↔ Android's <code>/sdcard/zApkStartShared</code>, synced both ways.</li><li>🪶 <strong>Bundles its own runtime</strong>: depends on no emulator you may have installed — no MuMu / LDPlayer / WSA.</li></ul>
+<blockquote>Note: this is an early-stage open-source project, free and ad-free, maintained in spare time. Hitting problems is normal — this manual exists exactly for that.</blockquote>
+<hr/>
+<h2 id="setup">2. Installation and first launch</h2>
+<h3 id="setup-variants">2.1 Pick the build that fits you</h3>
+<p>zApkStart is distributed from its own GitHub releases only — it never pulls builds from the original ApkStart project:</p>
+<ul><li>GitHub: <code>github.com/zeevrussak/zApkStart/releases</code></li></ul>
+<div class="tw"><table><thead><tr><th>Build</th><th>File</th><th>When to pick it</th></tr></thead><tbody><tr><td><strong>Store (MSIX)</strong></td><td><code>zApkStart_&lt;four-part version&gt;_x64.msix</code></td><td>Installed from a Microsoft Store listing. Bundles the full runtime, works offline after install, updates handled by the Store</td></tr><tr><td><strong>Full portable</strong></td><td><code>zApkStart-v*-win64-full.zip</code> (~830 MB, ~1.3 GB unpacked)</td><td>Don't want to install or wait for downloads: unpack and run, runtime is fully inside the package</td></tr><tr><td><strong>Installer</strong></td><td><code>zApkStart-v*-Setup.exe</code> (~1.3 GB)</td><td>Want desktop/Start-menu shortcuts and an uninstall entry</td></tr><tr><td><strong>Light portable</strong></td><td><code>zApkStart-v*-win64-portable.zip</code> (96 MiB, ~227 MB unpacked)</td><td>Just want to try it first; downloads the runtime on first launch</td></tr><tr><td><strong>ARM64 light portable</strong></td><td><code>zApkStart-v*-arm64-portable.zip</code></td><td>Windows on ARM64 devices — see <a href="#arm64">Windows ARM64</a> below</td></tr></tbody></table></div>
+<blockquote>⚠️ <strong>Always use the newest build (currently 0.6.4)</strong>. Old versions (0.5.x and earlier) either had no bundled runtime (every launch went looking for / downloading a 1.5 GB runtime) or defaulted to the embedded window — the classic cause of "very slow, won't open, a shell window with a spinning button shows up". If you are upgrading from an old version, make sure the desktop shortcut points at the new program directory.</blockquote>
+<h3 id="setup-first-run">2.2 What happens on first launch</h3>
+<ol><li><strong>(Light portable only) download the runtime</strong>: adb, Android Emulator, and the Android 14 system image; the official sources measure 10+ MB/s with 8-thread chunked download + resume. Full / Store builds skip this step.</li><li><strong>First image expansion</strong>: the xz image is expanded to <code>%APPDATA%\zapkstart\system-images</code> (about 20 seconds, done once).</li><li><strong>First <code>/data</code> creation</strong>: zApkStart generates its own ext4 user data with encryption and SELinux labels (the stock image only carries a 1 MB placeholder).</li><li><strong>Automatic boot</strong>: afterwards, launching an app is a single <code>am start</code>; cold boot takes ~23 seconds, snapshot restore ~10 seconds.</li></ol>
+<blockquote>A slow first launch is normal — it is a one-time cost. Every launch after that is instant.</blockquote>
+<hr/>
+<h2 id="usage">3. Everyday use</h2>
+<h3 id="usage-install">3.1 Installing apps</h3>
+<p>Pick any of three ways:</p>
+<ul><li><strong>Double-click the APK file</strong> (register the association first: Settings → System integration → associate .apk files);</li><li>Pick "Install app" in the main window;</li><li>Command line: <code>zApkStart.exe &lt;path\to.apk&gt;</code>.</li></ul>
+<p>Split packages (<code>.apks</code> / <code>.xapk</code>) are supported (via <code>install-multiple</code> automatically). Desktop + Start-menu shortcuts are created automatically after install.</p>
+<h3 id="launch">3.2 Opening apps</h3>
+<p>Just double-click the desktop icon. All apps share one runtime, so <strong>the second app starts almost instantly</strong>.</p>
+<h3 id="usage-window">3.3 Windows and display</h3>
+<div class="tw"><table><thead><tr><th>Action</th><th>How</th></tr></thead><tbody><tr><td>Fullscreen / window toggle</td><td><code>F11</code> or the tray right-click menu. Fullscreen only enlarges the window, it does not change the aspect ratio</td></tr><tr><td>Rotate portrait/landscape</td><td><code>Ctrl+Alt+R</code> (global) or the title-bar rotate button; the orientation is remembered per app</td></tr><tr><td>Auto fullscreen</td><td>Settings → Display &amp; windows → auto fullscreen (best combined with "force orientation")</td></tr><tr><td>Force landscape/portrait</td><td>Settings → Display &amp; windows → screen orientation</td></tr></tbody></table></div>
+<blockquote>Only the one transition where "the panel orientation differs from the app orientation" restarts the runtime (~40 seconds, the title bar shows a notice). Same-orientation apps launch instantly afterwards.</blockquote>
+<h3 id="shortcuts">3.4 Keyboard shortcuts</h3>
+<div class="tw"><table><thead><tr><th>Keys</th><th>Effect</th></tr></thead><tbody><tr><td><code>F11</code></td><td>Fullscreen / window mode toggle</td></tr><tr><td><code>Ctrl+Alt+R</code></td><td>Rotate the current app portrait/landscape</td></tr><tr><td><code>Ctrl+R</code></td><td>Rotate inside the shell window (in native window mode use <code>Ctrl+Alt+R</code>)</td></tr></tbody></table></div>
+<h3 id="shared-folder">3.5 File exchange (Windows ↔ Android)</h3>
+<p><code>%USERPROFILE%\zApkStartShared</code> on the PC and <code>/sdcard/zApkStartShared</code> inside Android sync both ways within seconds. Entry point: Settings → Integration &amp; files → File exchange ("Sync now" or "Open folder").</p>
+<h3 id="settings">3.6 Settings page guide</h3>
+<p>Since 0.6.0 the settings are split into eight categories with a search box on top (type keywords like "landscape", "memory", "proxy" — matches across categories):</p>
+<div class="tw"><table><thead><tr><th>Category</th><th>Main contents</th></tr></thead><tbody><tr><td>General &amp; install</td><td>Runtime &amp; environment, one-click setup, launch at boot, disk usage &amp; cleanup</td></tr><tr><td>Display &amp; windows</td><td>Display mode, auto fullscreen, screen orientation, tablet layout, window hosting</td></tr><tr><td>Input &amp; controls</td><td>Mouse buttons, keyboard mapping</td></tr><tr><td>Performance &amp; resources</td><td>Resource strategy, GPU preference (discrete/integrated), microphone, picture quality, data partition, system language, snapshots, boot warm-up</td></tr><tr><td>Network &amp; downloads</td><td>Updates &amp; download sources, accelerated mirrors, download threads, fast DNS</td></tr><tr><td>Diagnostics &amp; repair</td><td>Machine self-check, driver/compatibility patches, auto-detection</td></tr><tr><td>Integration &amp; files</td><td>Desktop &amp; apps, file exchange, system integration</td></tr><tr><td>Updates &amp; about</td><td>Software updates, about</td></tr><tr><td>Lab</td><td>Windows-native multi-window multi-instance (experimental), background retention</td></tr></tbody></table></div>
+<blockquote><strong>Lab · Multi-instance (experimental)</strong>: when enabled, launching a new app no longer force-closes the previous one — several apps can stay in the background, be switched back to, and keep their login state. Because the Android runtime still has only one emulator window, only one app's picture is on screen at any moment; this is not true side-by-side multi-window. It increases memory usage. Off by default — ignore it if you value stability.</blockquote>
+<blockquote><strong>Fast DNS</strong>: zApkStart ships with fast DNS <strong>off by default</strong> (the guest Android then uses the host's DNS). If guest DNS resolution is slow — for example behind a VPN or a corporate network — enable it under Settings → Network &amp; downloads; it points Android at fast public resolvers. Turn it off again if intranet name resolution misbehaves.</blockquote>
+<h3 id="updates">3.7 In-app updates</h3>
+<p>Settings → Updates &amp; about → Check for updates, or tray right-click → Check for updates. The update pipeline probes the sources and picks the fastest one (GitHub and configured mirrors), downloads in parallel chunks, and switches sources automatically on failure. Updating never touches the runtime, installed apps, or snapshots.</p>
+<p>New portable builds support <strong>incremental updates</strong>: every release also ships a "code manifest" and a small code-only package (a few MB, versus ~100 MB for the whole package). If your Electron shell version did not change, the update downloads only the small package, verifies files one by one, and replaces the program code in seconds. If the shell version changed, the manifest is missing, or any check fails, it automatically falls back to the full package, so an update cannot brick the program. Store builds are still updated by the Microsoft Store.</p>
+<blockquote>Note: only users who install portable builds via "Check for updates" from GitHub get incremental updates; Microsoft Store installs go through the Store channel. Incremental updates have no effect on installed apps, Android data, the runtime, or snapshots.</blockquote>
+<hr/>
+<h2 id="concepts">4. Three core concepts (the key to understanding errors)</h2>
+<p>Most "weird problems" trace back to one of the three things below. One minute here makes all later troubleshooting easier.</p>
+<h3 id="concepts-image">4.1 Runtime / system image</h3>
+<p>zApkStart does not emulate an "empty Android" — it loads a <strong>complete Android 14 system image</strong> as the base. 0.6.3 has exactly <strong>one universal image</strong> (Google Play x86_64); both x86 and ARM apps run on it — no more separate "AOSP image / compatibility image" pair like older versions.</p>
+<ul><li>Missing / corrupted image, or one incompatible with old user data → boot failure, stuck boot, restart loops.</li><li>User data (<code>/data</code>) is a thin diff layer; the system image is shared machine-wide.</li></ul>
+<h3 id="concepts-accel">4.2 Hardware acceleration</h3>
+<p>The emulator needs CPU virtualization acceleration to run fast. On Windows there are exactly two options:</p>
+<div class="tw"><table><thead><tr><th>Method</th><th>What it is</th><th>Who needs admin</th><th>Reboot after install?</th></tr></thead><tbody><tr><td><strong>WHPX</strong></td><td>Windows' built-in "Windows Hypervisor Platform" feature</td><td>When enabling the feature</td><td>Yes</td></tr><tr><td><strong>AEHD</strong></td><td>Google's own kernel driver</td><td>When installing the driver</td><td>No</td></tr></tbody></table></div>
+<p><strong>It runs without acceleration too</strong> (pure software emulation, TCG) — boot just takes minutes and frames drop easily. That is "slow", not "broken". zApkStart falls back automatically and retries with up to 4 parameter combinations across "render backend → acceleration method → memory/cold boot".</p>
+<blockquote>Don't confuse <strong>VirtualMachinePlatform</strong> (the WSL2 one) with the acceleration switch. The emulator wants <strong>HypervisorPlatform</strong>. With only the former enabled, <code>emulator -accel-check</code> still reports unavailable.</blockquote>
+<h3 id="concepts-arm">4.3 The ARM translation layer</h3>
+<p>The vast majority of Chinese-market Android apps ship <strong>ARM native libraries</strong> (arm64-v8a / armeabi-v7a) while the system image is <strong>x86_64</strong> — a "translation layer" is needed to feed ARM instructions to the x86 CPU. The 0.6.3 universal image bundles the new <code>ndk_translation</code> layer, so ARM apps normally install with no settings at all.</p>
+<ul><li>On first encounter with an ARM app whose translation-layer components are not in place yet, zApkStart fetches them automatically, restarts the runtime and retries (see 6.3).</li><li>Old images (API 30) have compatibility problems with the new layer (e.g. ByteDance apps hitting <code>DoBadTrampoline</code> SIGABRT); the Android 14 image fixes this.</li></ul>
+<hr/>
+<h2 id="checkup">5. Do this first when something breaks: self-check and auto-detection</h2>
+<p>Before digging through this manual, let the software check itself — it can auto-fix most problems.</p>
+<h3 id="checkup-hardware">5.1 Machine self-check · automatic configuration</h3>
+<p>Location: Settings → Diagnostics &amp; repair → <strong>Start self-check</strong></p>
+<ul><li>What it checks: CPU virtualization (VT-x/SVM) enabled, Hyper-V / Hypervisor Platform availability, GPU / VRAM / driver, memory, OS version, <code>emulator -accel-check</code>, AEHD driver.</li><li>Clicking "<strong>Apply recommended configuration</strong>" writes the safe items automatically: memory / cores / render resolution / picture quality / forced software emulation when no acceleration, and persists them as a machine driver profile that is applied automatically from then on.</li><li>Results are graded: <code>ok</code> (fine) / <code>warn</code> (works but worth optimizing) / <code>bad</code> (won't run until fixed). Every item has a color and an explanation.</li></ul>
+<p>Only two things genuinely require you:</p>
+<ul><li><strong>BIOS virtualization</strong>: reboot into BIOS → enable Intel VT-x / AMD SVM → Enabled (the software cannot do this for you).</li><li><strong>Windows features / acceleration driver</strong>: see 6.1.</li></ul>
+<h3 id="autodetect">5.2 Auto-detection (automatic debug)</h3>
+<p>Location: Settings → Diagnostics &amp; repair → "Auto-detection · smart diagnostics"</p>
+<p>Every 10 minutes in the background it sweeps the machine, lists issues in six categories, and offers <strong>one-click fixes</strong> for each (restart runtime, clear locks, kill orphan processes, invalidate snapshots, clean disk, reset Android networking…), then re-checks automatically after fixing:</p>
+<div class="tw"><table><thead><tr><th>Category</th><th>Problems covered</th></tr></thead><tbody><tr><td>Runtime</td><td>the real reason the last boot failed, stuck boot, leftover lock files, orphan emulator processes, empty snapshot shells, no hardware acceleration</td></tr><tr><td>Device connection</td><td>adb unauthorized, offline, runtime running but adb sees no device</td></tr><tr><td>Storage</td><td>free disk, data partition config vs reality, shared folder not writable</td></tr><tr><td>Settings</td><td>screen orientation vs physical panel conflict, auto fullscreen not working in detached windows</td></tr><tr><td>Network/logs</td><td>no network on the Android side, unreachable download sources, errors in recent logs</td></tr></tbody></table></div>
+<blockquote>Two principles: a probe that fails is never reported as a problem (if the status can't be read it says "unknown", never guesses); the same old issue does not nag repeatedly.</blockquote>
+<h3 id="diag-report">5.3 Exporting a diagnostic report</h3>
+<p>Location: Settings → Diagnostics &amp; repair → <strong>Export diagnostic report</strong> (or the same-named button on the system integration page)</p>
+<p>The report is plain text: machine configuration, the launch parameters actually chosen, logs, and diagnostic conclusions. Attach it when reporting a problem — it speeds things up enormously.</p>
+<h3 id="auto-tutorial">5.4 The built-in manual and automatic tutorials</h3>
+<p>Since 0.6.3 this manual is <strong>embedded in the app</strong>: the "?" button in the main window title bar and "Open user manual" under Settings → About both open it directly, searchable, scrollable, printable / savable as PDF. It auto-navigates to the section relevant to the current failure.</p>
+<p>Auto-detection/repair also brings the tutorial to you:</p>
+<ul><li>When auto-detection finds a problem, there is a "Tutorial" button next to the issue entry that jumps straight to the right section;</li><li>For hardware acceleration, install failures, the ARM translation layer, adb authorization, no-sound and similar problems, <strong>the matching tutorial pops up automatically after an automatic fix fails</strong>, so you don't have to come looking here;</li><li>The same tutorial auto-pops at most once per app run — it will not keep interrupting you.</li></ul>
+<blockquote>Manual entry point: the <code>?</code> button in the title bar. To temporarily stop auto-popups, disable notifications in the auto-detection settings; tutorials remain reachable from the issue entry's "Tutorial" button.</blockquote>
+<hr/>
+<h2 id="faq">6. Solutions to common problems</h2>
+<h3 id="troubleshoot-accel">6.1 "Hardware acceleration is not enabled" / slow boot</h3>
+<p><strong>Symptoms</strong>: Settings/diagnostics say "no hardware acceleration right now" / "hardware acceleration unavailable"; boot takes minutes, frames drop.</p>
+<p><strong>First, be clear</strong>: this is usually "slow", not "won't open". zApkStart has already fallen back to software emulation. Acceleration is what you need for smoothness.</p>
+<p><strong>Per build type:</strong></p>
+<ul><li><strong>Installer / portable</strong>: Settings → Diagnostics &amp; repair → machine self-check → find "hardware acceleration not enabled" → click <strong>Repair</strong>. One UAC prompt, WHPX is enabled automatically; if that fails (unsupported system or you clicked No), it installs the AEHD driver instead.</li><li><strong>Microsoft Store (MSIX) build</strong>: Store apps <strong>cannot elevate themselves</strong>, so clicking "Repair" opens the "Turn Windows features on or off" dialog:</li></ul>
+<p>1. Check <strong>"Windows Hypervisor Platform" (HypervisorPlatform)</strong>; 2. Click OK and <strong>reboot the PC</strong> once.</p>
+<p>You can also run in an <strong>administrator PowerShell</strong>:</p>
+<p>``<code>powershell dism /online /enable-feature /featurename:HypervisorPlatform /all /norestart dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart </code>``</p>
+<blockquote>Two pitfalls: ① do not enable only VirtualMachinePlatform — that is not the acceleration the emulator wants; ② if VT-x/SVM is disabled in the BIOS, enable it first per 5.1, otherwise enabling the Windows feature does nothing. If your GPU driver is over 3 years old, update it from the vendor's website; but zApkStart never installs drivers itself (a wrong install makes things worse). Some old GPUs / integrated graphics need a compatibility patch: see Settings → Diagnostics &amp; repair → Driver · compatibility patches.</blockquote>
+<hr/>
+<h3 id="install">6.2 Install failures (INSTALL_FAILED_*)</h3>
+<p><strong>Symptoms</strong>: installing an app errors out; the message usually starts with "Install failed:" and ends with an <code>INSTALL_*</code> error code.</p>
+<p>zApkStart translates the raw English errors. Match yours against this table:</p>
+<div class="tw"><table><thead><tr><th>Code</th><th>Meaning</th><th>What to do</th></tr></thead><tbody><tr><td><code>INSTALL_FAILED_NO_MATCHING_ABIS</code></td><td>The app ships ARM-only libraries and the current image has no ARM translation layer</td><td><strong>Usually handled automatically</strong>: zApkStart switches images and retries. See <a href="#troubleshoot-arm">6.3</a></td></tr><tr><td><code>INSTALL_FAILED_OLDER_SDK</code></td><td>The app demands a newer Android</td><td>Needs a newer system image; current is Android 14 (API 34), rarely triggered</td></tr><tr><td><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></td><td>APK has no valid signature</td><td>APK is corrupt or unofficial; get the package again</td></tr><tr><td><code>INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES</code> / <code>INSTALL_FAILED_UPDATE_INCOMPATIBLE</code></td><td>Signature differs from the installed version</td><td>Uninstall the old one first, then install</td></tr><tr><td><code>INSTALL_FAILED_VERSION_DOWNGRADE</code></td><td>A newer version is already installed</td><td>Cannot downgrade over it; install a higher version or uninstall first</td></tr><tr><td><code>INSTALL_FAILED_INSUFFICIENT_STORAGE</code></td><td>Runtime disk is full</td><td>Clean up disk, or move the runtime data directory to a drive with room (Settings → System integration)</td></tr><tr><td><code>INSTALL_FAILED_INVALID_APK</code></td><td>APK corrupt/incomplete</td><td>Possibly an unfinished download; download again</td></tr><tr><td><code>INSTALL_FAILED_INVALID_URI</code></td><td>APK path contains special characters / non-ASCII</td><td>Move the APK to a plain-ASCII path and install again</td></tr><tr><td><code>INSTALL_FAILED_ALREADY_EXISTS</code></td><td>Same name already present with a different signature</td><td>Uninstall first</td></tr><tr><td><code>INSTALL_FAILED_DEPRECATED_SDK_VERSION</code></td><td>App targets a very old Android</td><td><strong>Handled automatically</strong>: zApkStart retries with the official bypass parameter</td></tr><tr><td><code>INSTALL_FAILED_TEST_ONLY</code></td><td>Test-only package</td><td><strong>Handled automatically</strong>: retries with the test-package parameter</td></tr><tr><td><code>INSTALL_FAILED_MISSING_SHARED_LIBRARY</code></td><td>A required device feature / vendor library is absent</td><td>The app depends on a specific vendor environment an emulator cannot provide</td></tr><tr><td><code>INSTALL_FAILED_USER_RESTRICTION</code></td><td>System blocks installation</td><td>Restart the runtime and retry</td></tr><tr><td><code>INSTALL_FAILED_CONFLICTING_PROVIDER</code></td><td>ContentProvider conflicts with an installed app</td><td>Uninstall the conflicting app</td></tr><tr><td><code>INSTALL_FAILED_INTERNAL_ERROR</code></td><td>Internal system error (usually low space or boot not finished)</td><td>Restart the runtime, wait for boot to complete, retry</td></tr></tbody></table></div>
+<blockquote>If you get raw English outside this table, export a diagnostic report per 5.3 and report it.</blockquote>
+<hr/>
+<h3 id="troubleshoot-arm">6.3 No ARM translation layer in the system image / ARM apps fail to install or crash</h3>
+<p><strong>Symptoms</strong>: installing reports <code>INSTALL_FAILED_NO_MATCHING_ABIS</code> with text like "the app only ships ARM native libraries… the current system image has no ARM translation layer"; or the app installs but crashes instantly on launch, with <code>DoBadTrampoline</code>, <code>libndk_translation</code>, <code>UnsatisfiedLinkError</code>, <code>...so not found</code> in the logs.</p>
+<p><strong>Background</strong>: 0.6.3 uses <strong>one universal Android 14 image</strong> supporting both x86 and ARM, with the translation layer built in. Old versions required manually switching images; that "universal compatibility image (auto-managed)" switch now <strong>exists only for old-configuration compatibility — normally you never touch it</strong>.</p>
+<p><strong>What zApkStart does automatically:</strong></p>
+<ol><li>If install reports <code>NO_MATCHING_ABIS</code>, it switches to the compatibility image → restarts the runtime → reinstalls previously installed apps from their local APK backups → retries the install (log: "switching to the compatibility image and restarting the runtime…").</li><li>If an app crashes at launch and the logs clearly point at the ARM translation layer (e.g. <code>DoBadTrampoline</code>), it automatically switches to the Android 14 compatibility image and retries (log: "ARM translation layer crash detected, switching compatibility image automatically…").</li></ol>
+<p><strong>What you need to do:</strong></p>
+<ul><li><strong>Be patient</strong>: switching images restarts the runtime — roughly 40 seconds to 1 minute — and you may see a progress notice.</li><li><strong>Confirm the image is in place</strong>: Settings → General &amp; install → Runtime, check the "universal compatibility image (auto-managed)" status; if it shows not downloaded, click "Download compatibility image" (~1.5 GB), then <strong>restart the runtime</strong> for it to take effect.</li><li><strong>Still crashing</strong>: a few apps ship deeper anti-emulation checks (they hard-verify real sensors, baseband, etc.) and simply cannot run in an emulator; the app explains this in plain language — that is a limitation, not a defect.</li></ul>
+<p><strong>What about "a red 'Install failed' while the text says 'retrying after switching to the compatibility image'"?</strong></p>
+<p>That was a display bug in old builds: the image file was on disk, but it got reused on a runtime whose translation layer was disabled, so the switch-and-retry was skipped and failure was reported while the text still claimed "retrying". <strong>You are not on the latest code — upgrade to the latest 0.6.4 build</strong> (fixed in the version this manual documents: the runtime's real translation capability is probed before install instead of just checking the file exists; <code>NO_MATCHING_ABIS</code> always triggers switch + restart + old-snapshot invalidation before reinstalling; a second failure is reported honestly instead of claiming "retrying"). Upgrade, then install the app again.</p>
+<blockquote>Field-tested: Hongguo free short-drama (com.phoenix.read, arm64-v8a-only) installs, reaches its recommendation feed, and plays video normally on the Android 14 image + new translation layer. The runtime's <code>ro.product.cpu.abilist</code> = <code>x86_64,arm64-v8a</code> — the layer is active.</blockquote>
+<hr/>
+<h3 id="troubleshoot-adb">6.4 adb unauthorized (allow USB debugging)</h3>
+<p><strong>Symptoms</strong>: diagnostics report "adb unauthorized" or "Android debugging authorization incomplete"; <code>adb devices</code> shows <code>unauthorized</code>; apps never start.</p>
+<p><strong>The correct sequence:</strong></p>
+<ol><li>Look for an emulator window showing the <strong>"Allow USB debugging?"</strong> dialog — click <strong>Allow</strong> there, and check <strong>"Always allow debugging from this computer"</strong> so it never asks again.</li><li>If the window can't be clicked or never appears: Settings → Runtime → <strong>Reset Android data / wipe Android data</strong>, then retry (installed apps are wiped; the APK files remain and are reinstalled automatically; the system itself is unaffected).</li></ol>
+<blockquote>⚠️ <strong>Never delete <code>%USERPROFILE%\.android\adbkey</code></strong>. Field-tested: that is the exact wrong move. Android only writes a new public key when the <code>adb_keys</code> file does not exist; if you swap in a new private key while the system still stores the old public key, the two never match and authorization fails forever.</blockquote>
+<blockquote>Command-line check: zApkStart's adb server runs on <strong>dedicated port 5044</strong> (fully separated from your own 5037): ``<code>powershell $env:ANDROID_ADB_SERVER_PORT = 5044 adb devices    # you should see emulator-5554 </code>`<code> Do not manually </code>adb connect` to port 5555 — the Play image pops an "Allow USB debugging" prompt over the app, which looks like the program is broken.</blockquote>
+<hr/>
+<h3 id="troubleshoot-launch">6.5 Double-clicking the icon does nothing / endless spinner / a window with a rotate button</h3>
+<p>These problems almost always point at the <strong>launch entry or window takeover</strong>. Check in this order.</p>
+<p><strong>① Make sure you run the new build</strong></p>
+<ul><li>Check the head of <code>%APPDATA%\zApkStart\logs\app.log</code>: it should say <code>start v0.6.4</code>. If it shows <code>v0.5.x</code>, your desktop/Start-menu shortcut points at the old directory.</li><li>Old versions (0.5.x) had no bundled runtime and defaulted to the embedded window → "very slow + shell window with a spinning button". Move to 0.6.4 and point the shortcut at the new <code>zApkStart.exe</code>.</li></ul>
+<p><strong>② Set expectations for boot time</strong></p>
+<p>Cold boot ~23–48 seconds, orientation-change restart ~50 seconds — both normal. During that window clicking the icon looks like "nothing happens" while the machine boots in the background. <strong>Do not click repeatedly</strong>: multi-clicking lets a second instance take over the emulator, and the first instance's cleanup on exit can shut the emulator down, failing the launch (0.6.3 added <code>owner.pid</code> protection, but queueing still looks like nothing happens). Click once, wait for it to come up.</p>
+<p><strong>③ Native window didn't take over → fell back to the embedded window with the rotate button</strong></p>
+<p>If the log shows <code>attach failed</code>, <code>emu:0</code>, the window proxy failed to find the emulator window and the program fell back to embedded mode (the shell window with title bar + rotate button you are seeing).</p>
+<ul><li>Launching from a directory junction / non-standard path tends to trigger this; 0.6.3 makes the proxy resolve the real path before matching. If it still happens, attach the log when reporting.</li></ul>
+<p><strong>④ Reset Android data (last resort)</strong></p>
+<p>Settings → General &amp; install → <strong>Reset Android data</strong> (double confirmation). Wipes installed apps and their data but keeps the system itself; the app manifest survives and apps reinstall automatically on launch. Use it for a corrupted data partition or any "won't open" caused by <code>/data</code> failing to mount.</p>
+<hr/>
+<h3 id="troubleshoot-boot">6.6 Quick reference for other startup problems</h3>
+<p>zApkStart <strong>already handles</strong> most of these runtime errors automatically; the table says what it does and what is left for you. If the automatic handling doesn't help, export a diagnostic report per 5.3.</p>
+<div class="tw"><table><thead><tr><th>Diagnostic title</th><th>Automatic handling</th><th>What you can still do</th></tr></thead><tbody><tr><td>Hardware acceleration unavailable</td><td>Falls back to software emulation</td><td>Enable acceleration per 6.1</td></tr><tr><td>Memory allocation failed</td><td>Lowers memory and core count</td><td>Close memory-hungry programs</td></tr><tr><td>Emulator port occupied</td><td>Picks a free port automatically</td><td>Exit other emulators (Nox/MuMu/BlueStacks) or reboot</td></tr><tr><td>Leftover lock files / "Running multiple emulators with the same AVD"</td><td>Clears AVD locks and retries</td><td>Make sure no other emulator uses the same runtime</td></tr><tr><td>System image missing/corrupt/incompatible with old data</td><td>Boots again with clean user data</td><td>Settings → Runtime: delete the image and re-download</td></tr><tr><td>Fast-boot snapshot corrupt</td><td>Discards the old snapshot, cold-boots</td><td>The next clean exit rebuilds it; or turn snapshots off</td></tr><tr><td>Runtime components deleted / VC++ runtime missing</td><td>—</td><td>Add zApkStart to the antivirus whitelist and unpack again; install the Microsoft VC++ 2015-2022 runtime</td></tr><tr><td>Not enough disk space</td><td>—</td><td>Move the runtime directory to a roomier drive; disable snapshots / shrink the data partition</td></tr><tr><td>Path contains non-ASCII / special characters</td><td>Switches to short paths automatically</td><td>Move zApkStart to a plain-ASCII directory (e.g. <code>C:\zApkStart</code>)</td></tr><tr><td>CPU lacks an instruction set (AVX/SSE4)</td><td>—</td><td>Usually a warning and boot still works; otherwise use a VT-x/AVX-capable machine or an older engine</td></tr><tr><td>Current runtime rejects this GPU mode</td><td>Re-picks a workable GPU mode per engine version</td><td>—</td></tr><tr><td>GPU / unknown error</td><td>Retries automatically with multiple parameter sets</td><td>Update GPU drivers; or write a compatibility patch; if it still fails, export a diagnostic report</td></tr></tbody></table></div>
+<p><strong>Desktop icons show the zApkStart icon / blank icons</strong>: Settings → System integration → <strong>Rebuild shortcuts</strong> (rewrites the desktop and Start-menu shortcuts from the current app manifest, fixing icons and taskbar identity together). Rebuild is also needed if a shortcut was moved and its path went stale.</p>
+<hr/>
+<h3 id="troubleshoot-sound">6.7 No sound in apps / sound is very quiet</h3>
+<p><strong>Symptoms</strong>: videos and notification sounds in Android apps are completely silent; or other Windows apps have sound while only zApkStart apps are silent.</p>
+<p><strong>First separate the cases</strong>: if the system itself has no sound, fix Windows audio first; only continue below when the rest of Windows has sound and zApkStart apps don't.</p>
+<ol><li><strong>Windows volume and output device</strong>: click the taskbar volume icon; make sure nothing is muted, the volume isn't 0, and the output device is the headphones/speakers you are actually using. Open "Volume mixer" and check whether the zApkStart / Android runtime row is individually muted or at 0.</li><li><strong>In-app volume</strong>: some apps set media volume to 0 on first entry — raise it in the app's own settings or the Android volume keys. Some apps (YouTube/Douyin-like) also disable autoplay sound inside the app.</li><li><strong>zApkStart's sound switch</strong>: Settings → Performance &amp; resources → <strong>Android audio</strong> must be checked. Auto-detection watches this; if it finds it off, it reports it under "Settings → Diagnostics &amp; repair" and one click turns it back on. <strong>You must restart the Android runtime after changing it</strong> (the emulator only starts with <code>-no-audio</code> when both sound and microphone are off; changing it mid-run does not restore sound immediately).</li><li><strong>Windows audio service</strong>: press <code>Win+R</code>, run <code>services.msc</code>, find <strong>Windows Audio</strong>, confirm the status is "Running" and startup type "Automatic". If disabled, right-click → start; auto-detection (0.6.3+) also finds and flags this. Administrator PowerShell can run <code>net start Audiosrv</code>.</li><li><strong>Bluetooth headphones / multiple outputs</strong>: after switching to Bluetooth headphones Windows sometimes doesn't migrate running programs. Disconnect and reconnect the headset, or restart the Android runtime.</li><li><strong>Still silent</strong>: export a diagnostic report under "Settings → Diagnostics &amp; repair" and report it; the report includes the sound switch and audio service state, which pins down whether it's configuration, a system service, or the app itself.</li></ol>
+<blockquote>When the automatic fix fails, the app opens this section by itself. If you turned off auto-detection notifications, you can still get here via the issue entry's "Tutorial" button or the title-bar <code>?</code>.</blockquote>
+<hr/>
+<h3 id="troubleshoot-dll">6.8 Store build fails to start / 0xC0000135 (DLL load failure)</h3>
+<p><strong>Symptoms</strong>: launching an app spins forever or exits immediately; the diagnostic report shows exit code <code>0xC0000135</code> (decimal <code>3221225781</code>). Most common with builds <strong>installed from a Microsoft Store (MSIX) package</strong>.</p>
+<p><strong>First, correct a common misjudgment</strong>: <code>0xC0000135</code> only means "some DLL failed to load". It does <strong>not</strong> automatically mean the VC++ runtime is missing, and it does <strong>not</strong> automatically mean antivirus deleted files. Three possibilities share this exit code — don't just reinstall the VC++ runtime over and over:</p>
+<ol><li><strong>The Store (MSIX) path restriction</strong>: Store builds live in the read-only <code>C:\Program Files\WindowsApps\...</code> directory. When the Android runtime spawns <code>qemu</code> and friends from there, the children resolve DLLs by relative path and the container's path redirection / environment isolation can break that, so they exit with <code>0xC0000135</code>. This is Store-specific and no amount of VC++ reinstalling fixes it.</li><li><strong>Genuinely missing VC++ runtime</strong>: the Android runtime (Qt6 / qemu) depends on Microsoft VC++ 2015-2022 (x64). If Settings → Diagnostics &amp; repair explicitly reports "VC++ runtime missing (x64)", that one is <strong>verified by checking the dll files actually exist</strong>, and its one-click fix installs it.</li><li><strong>Antivirus quarantined runtime files</strong>: dlls in the runtime directory quarantined/deleted also produce this code. Add zApkStart's install and runtime data directories to the antivirus whitelist, then reinstall once.</li></ol>
+<p><strong>Troubleshoot in this order</strong>:</p>
+<ol><li><strong>Check whether diagnostics really report VC++</strong>: if the settings page lists "VC++ runtime missing (x64)", click its one-click fix. Reboot after install and try again. Do <strong>not</strong> reinstall just because the exit code is <code>0xC0000135</code> — first confirm that item is actually reported.</li><li><strong>VC++ not reported, still failing → probably the Store path problem</strong>: currently the most likely cause. Try in order:</li></ol>
+<ul><li>Exit zApkStart completely (tray icon → exit) and reopen;</li><li>Check your antivirus' "controlled folder access / ransomware protection", whitelist zApkStart, and restart;</li><li>If it still fails, use the <strong>portable build</strong> (<code>zApkStart-win64-portable</code> from the fork's GitHub Releases) placed in a plain-ASCII directory (e.g. <code>C:\zApkStart</code>) — the portable build doesn't live under WindowsApps and bypasses this restriction entirely.</li></ul>
+<ol><li><strong>Want the exact failing DLL name</strong> (advanced): when reporting, the most valuable datum is which dll is actually missing. In Event Viewer → Windows logs → Application, find the zApkStart / emulator <code>Application Error</code> entry and read its <code>FaultingModuleName</code> field; or export a diagnostic report under "Settings → Diagnostics &amp; repair" and attach it.</li><li><strong>What if adb also crashes</strong>: if the event log separately shows <code>adb.exe</code> failing with <code>0xC0000409</code>, that is an independent issue (device connection anomaly), not the direct cause of the emulator exit; handle the launch per 1–3 above and mention the adb issue separately in your report.</li></ol>
+<blockquote>This section opens automatically: when a startup failure / repair failure is classified as a DLL-type problem, the app jumps straight here. You can always reach it manually via the issue entry's "Tutorial" button or the title-bar <code>?</code>.</blockquote>
+<hr/>
+<h3 id="troubleshoot-mic">6.9 Apps can't use the microphone / voice calls and recording fail</h3>
+<p><strong>Symptoms</strong>: voice messages, calls, recording, scan-to-talk and the like fail in apps, with prompts like "no microphone / recording device unavailable".</p>
+<ol><li><strong>zApkStart's microphone switch</strong>: Settings → Performance &amp; resources → <strong>Microphone input</strong> must be checked. On by default; if it was turned off, auto-detection reports "microphone input disabled in settings" under "Settings → Diagnostics &amp; repair", and one click re-enables it and restarts the runtime. <strong>You must restart the Android runtime after changing it</strong> (the switch decides whether the emulator exposes a recording device to Android).</li><li><strong>Windows microphone permission</strong>: <code>Settings → Privacy &amp; security → Microphone</code> — make sure both "let apps access your microphone" and "let desktop apps access your microphone" are on. Android runs inside a desktop app; with this off, the system level never yields a microphone.</li><li><strong>Confirm Windows can record</strong>: record a clip with the built-in Voice Recorder to confirm the microphone itself and the input device (headset mic / camera mic / standalone mic) work and aren't muted.</li><li><strong>Right input device</strong>: with several microphones connected, set the one you want as the default device under Windows "Sound settings → Input"; the emulator uses the system default input device.</li><li><strong>How sound and microphone interact</strong>: only when <strong>both</strong> "Android audio" and "Microphone input" are off does the emulator shut down the whole audio subsystem to save CPU; as long as one is on, the other works normally.</li></ol>
+<blockquote>With the microphone off, apps just "find no recording device" — there is no loud error. Auto-detection proactively reports it; you can also reach this section manually from the title-bar <code>?</code>.</blockquote>
+<hr/>
+<h3 id="troubleshoot-gpu">6.10 Discrete / integrated GPU rendering (graphics preference)</h3>
+<p><strong>Symptoms</strong>: the machine has a discrete GPU but app graphics stutter and drop frames; or a laptop runs hot and drains battery and you'd rather use the integrated GPU.</p>
+<p>zApkStart renders Android graphics with <code>-gpu host</code>, i.e. real hardware rendering through your actual GPU. Since 0.6.4 every GPU vendor (NVIDIA / AMD / Intel) defaults to host, instead of the old behavior that forced AMD/Intel down to software rendering — which amounted to throwing the GPU away. If host crashes on a given machine, it automatically degrades to a software backend; usage is unaffected.</p>
+<p><strong>Picking which GPU</strong>: on machines with both discrete and integrated GPUs, Windows sometimes assigns the emulator to the integrated one. Settings → Performance &amp; resources → <strong>GPU preference</strong> pins it explicitly:</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Fits</th></tr></thead><tbody><tr><td>System default (recommended)</td><td>Let Windows choose by power/load; easiest on most machines</td></tr><tr><td>Prefer discrete GPU</td><td>Games, video, anything needing high frame rates; more heat and battery drain</td></tr><tr><td>Prefer integrated GPU</td><td>Light apps, idle sessions, laptop battery saving; lower performance</td></tr></tbody></table></div>
+<ul><li>This works through Windows' "Graphics performance preference" (UserGpuPreferences) applied to the emulator process, <strong>effective only on Windows 10 1803 and newer</strong>; older systems ignore it automatically without affecting launch.</li><li>It takes effect on the <strong>next start of the Android runtime</strong>; the settings page shows whether it is currently active.</li><li>On old AMD drivers host occasionally crashes: update the GPU driver; if that doesn't help, enable the bundled AMD integrated-GPU swangle sample patch under "Settings → Diagnostics &amp; repair → Driver · compatibility patches" to pin rendering to a steadier backend.</li></ul>
+<hr/>
+<h2 id="cli">7. Command-line reference</h2>
+<pre><code>zApkStart.exe                          open the main window
+zApkStart.exe &lt;path\to.apk&gt;            install an APK
+zApkStart.exe --launch &lt;package&gt;       launch an app directly (what the desktop shortcuts run)</code></pre>
+<hr/>
+<h2 id="data-dirs">8. Data and directories</h2>
+<div class="tw"><table><thead><tr><th>Purpose</th><th>Location</th></tr></thead><tbody><tr><td>Runtime (adb / emulator / images)</td><td>bundled with the package, or <code>%APPDATA%\zapkstart\runtime</code> (light portable)</td></tr><tr><td>Expanded system image</td><td><code>%APPDATA%\zapkstart\system-images</code></td></tr><tr><td>AVD / installed apps / snapshots</td><td><code>%APPDATA%\zapkstart\avd</code></td></tr><tr><td>App icons</td><td><code>%APPDATA%\zapkstart\icons\&lt;package&gt;.ico</code></td></tr><tr><td>Settings &amp; manifest</td><td><code>%APPDATA%\zApkStart\settings.json</code> / <code>apps.json</code></td></tr><tr><td>Run logs / diagnostic reports</td><td><code>%APPDATA%\zApkStart\logs\</code></td></tr><tr><td>Windows ↔ Android shared folder</td><td><code>%USERPROFILE%\zApkStartShared</code> ↔ <code>/sdcard/zApkStartShared</code></td></tr></tbody></table></div>
+<blockquote>"Reset Android data" only clears the user-data layer; the system image and APK files are kept. Updating apps never loses the runtime, installed apps, or snapshots.  Keep plenty of free space on the C: drive: image expansion + data partition + snapshots together can reach several GB. Low space causes install/boot failures.</blockquote>
+<hr/>
+<h2 id="arm64">Windows ARM64</h2>
+<p>zApkStart ships a native ARM64 build of the app itself. What the Android engine can and cannot do is a hardware reality, and the app tells you about it honestly:</p>
+<div class="tw"><table><thead><tr><th>Host</th><th>Shell (this app)</th><th>Android engine</th></tr></thead><tbody><tr><td>Windows 10/11 x64</td><td>Native</td><td>Native (Google emulator / QEMU x64, AEHD or WHPX acceleration) — full experience</td></tr><tr><td>Windows 11 ARM64</td><td>Native (ARM64 build)</td><td><strong>Not available natively.</strong> Google publishes no ARM64 emulator binaries; the x64 engine under Windows' own emulation is software-translated twice and is not usable for real apps</td></tr></tbody></table></div>
+<ul><li>On ARM64, the app reports the situation on first run.</li><li>Running the x64 engine under Windows emulation is an <strong>explicit opt-in</strong> (a single attempt, with expectations stated up front) — never a default.</li><li>A genuinely native ARM64 Android engine is documented — not shipped — in <code>docs/zapkstart/arm64-research.md</code> in the repository.</li><li>ARM64 devices should use the ARM64 light portable build; everything else in this manual (settings, diagnostics, updates) applies the same way.</li></ul>
+<hr/>
+<h2 id="support">9. Getting help and giving feedback</h2>
+<p>When reporting a problem, attach three things — they speed up diagnosis enormously:</p>
+<ol><li><strong>Diagnostic report</strong>: Settings → Diagnostics &amp; repair → Export diagnostic report;</li><li><strong>The last 20 lines of app.log</strong>: <code>%APPDATA%\zApkStart\logs\app.log</code>;</li><li><strong>Your version and build type</strong>, e.g. "Store build 0.6.4" or "full portable 0.6.4".</li></ol>
+<ul><li>GitHub: &lt;https://github.com/zeevrussak/zApkStart&gt; (Issues / Releases)</li></ul>
+<p>zApkStart is a fork of ApkStart by RoutineMiku — upstream is credited in NOTICE.md and inside the app.</p>
+<hr/>
+<p>*This manual matches v0.6.4 and is updated with each release. If the UI wording differs slightly from what is written here, the in-app text wins.*</p>
+</main>
+</div>
+<div class="btnbar"><button onclick="window.print()">Print / Save as PDF</button></div>
+<script>
+(function () {
+  var input = document.getElementById('tocSearch');
+  var links = Array.prototype.slice.call(document.querySelectorAll('#tocList a'));
+  if (!input) return;
+  input.addEventListener('input', function () {
+    var q = input.value.trim().toLowerCase();
+    links.forEach(function (a) { a.hidden = !!q && a.textContent.toLowerCase().indexOf(q) < 0; });
+  });
+  // 自动教程按锚点打开时，把命中的目录项滚进视野
+  if (location.hash) {
+    var hit = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (hit) setTimeout(function () { hit.scrollIntoView({ block: 'start' }); }, 80);
+  }
+}());
+</script>
+</body>
+</html>

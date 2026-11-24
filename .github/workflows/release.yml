@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: 构建便携版并发布
+    name: 构建便携版（x64）并发布
     runs-on: windows-latest
 
     steps:
@@ -32,18 +32,18 @@ jobs:
       - name: 打包便携版
         run: npm run pack
 
-      # 用 7-Zip 而不是 Compress-Archive：同一个目录，.NET deflate 压出来 105MB，
-      # 7-Zip -mx=9 只要 99.6MB —— 差这 5MB 就决定 Gitee 上放的是「一个能直接解压的
-      # zip」还是「两个必须手工拼接的 part」。build/zip.js 还带体积闸门：超过
-      # 100MiB 直接让 job 失败，避免以后又悄悄退回分片包。
+      # 用 7-Zip 而不是 Compress-Archive：同一个目录，.NET deflate 压出来会大几 MB。
+      # build/zip.js 的体积闸门保留（--limit-mb 100）作为健全性检查：便携包突然变胖
+      # 通常意味着构建里混进了不该带的东西。zApkStart 只发 GitHub，没有 Gitee 的
+      # 100MB 硬限制，但闸门本身仍然值得留着。
       - name: 压缩产物（7-Zip，体积闸门 100MiB）
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
           if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
-          node build/zip.js dist/ApkStart-win64-portable "ApkStart-$tag-win64-portable.zip" --limit-mb 100
+          node build/zip.js dist/zApkStart-win64-portable "zApkStart-$tag-win64-portable.zip" --limit-mb 100
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Get-Item "ApkStart-$tag-win64-portable.zip" | Select-Object Name, Length
+          Get-Item "zApkStart-$tag-win64-portable.zip" | Select-Object Name, Length
 
       # 增量更新资产：清单 + 代码层 zip（只有 resources/app，几 MB）。
       # 客户端本机 Electron 版本一致时只下这两个小文件，不再每次重下 ~100MB 整包；
@@ -53,7 +53,7 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
-          node build/incremental.js dist/ApkStart-win64-portable $tag
+          node build/incremental.js dist/zApkStart-win64-portable $tag
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # 创建 Release 并上传轻量便携版（壳层极小，运行时首次启动按需下载）
@@ -64,26 +64,22 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
-          $zip = "ApkStart-$tag-win64-portable.zip"
+          $zip = "zApkStart-$tag-win64-portable.zip"
           $ver = $tag.TrimStart('v')
-          $manifest = "ApkStart-v$ver-manifest.json"
-          $appzip = "ApkStart-v$ver-app.zip"
+          $manifest = "zApkStart-v$ver-manifest.json"
+          $appzip = "zApkStart-v$ver-app.zip"
           # 幂等：release 已存在（如重跑 / 重推 tag）就跳过 create，只上传资产。
-          # 但说明要每次都回填：以前只在 create 时写 notes，导致已有 release 的 body
-          # 永远停在自动生成的「Full Changelog」一行（0.6.1~0.6.4 就是这样丢的）。
+          # 说明每次都回填（有手写 .github/release-notes-<tag>.md 就用它，否则自动生成）。
           $existing = gh release view $tag --json tagName -q .tagName 2>$null
-          # 有手写的发版说明就用它（.github/release-notes-<tag>.md），比 --generate-notes
-          # 的「Full Changelog」有用得多；没有才退回自动生成。
           $notes = ".github/release-notes-$tag.md"
           if (-not $existing) {
             if (Test-Path $notes) {
-              gh release create $tag --title "ApkStart $tag" --notes-file $notes
+              gh release create $tag --title "zApkStart $tag" --notes-file $notes
             } else {
-              gh release create $tag --title "ApkStart $tag" --generate-notes
+              gh release create $tag --title "zApkStart $tag" --generate-notes
             }
             if ($LASTEXITCODE -ne 0) { exit 1 }
           } elseif (Test-Path $notes) {
-            # release 已存在：把最新的手写说明写回去（覆盖那段 Full Changelog）
             gh release edit $tag --notes-file $notes
             if ($LASTEXITCODE -ne 0) { Write-Error "回填 $tag 说明失败"; exit 1 }
           }
@@ -95,45 +91,8 @@ jobs:
           if (-not $ok) { Write-Error "上传失败: $zip / $manifest / $appzip"; exit 1 }
           gh release view $tag --json assets --jq '.assets[].name'
 
-      # 同步到 Gitee：国内直连 GitHub 只有几十 KB/s，Gitee 通常能跑几 MB/s。
-      # 便携包压紧后约 99.6MB，在 Gitee 单文件上限（100MB）以内，直接放一个整包，
-      # 用户点开就能解压；只有超限时 publish-gitee.js 才退回 .part1/.part2 分片。
-      # Setup（1.4GB）与运行时整包（1.4GB）超限太多，只留在 GitHub ——
-      # 应用端对「哪个源有资产」是取并集的，不影响更新。
-      # Gitee 同步「缺 token / 网络不通」只告警不阻断：否则整 build job 变红，
-      # 下面 needs: build 的 full job 会被整段跳过，连 GitHub 自己的 Setup / 运行时整包都发不出。
-      # 缺 token 时这一步仍会在日志里标红（continue-on-error 是「可见但非致命」），不静默。
-      - name: 同步便携版到 Gitee
-        continue-on-error: true
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-        shell: pwsh
-        run: |
-          # 以前这里是「没配 token 就静默跳过、这一步仍显示成功」——
-          # v0.3.4 就这样在 Gitee 上悄悄少了一个版本，事后才发现。
-          # 现在缺 token 直接让这一步失败，宁可红一次也别再无声无息。
-          if (-not $env:GITEE_TOKEN) {
-            Write-Error "缺少 GITEE_TOKEN：Gitee 这一版不会有安装包。请在 Settings → Secrets and variables → Actions 添加 GITEE_TOKEN（勾选 projects + pull_requests 之外的 releases 权限即可）。"
-            exit 1
-          }
-          $tag = "${{ github.ref_name }}"
-          if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
-          # 发布说明与 GitHub 用同一份，别让 Gitee 那边只剩一句「便携版安装包」
-          $notes = ".github/release-notes-$tag.md"
-          # 增量资产（清单 + 代码包）都很小，一起同步，国内用户更新也走增量
-          $ver = $tag.TrimStart('v')
-          $manifest = "ApkStart-v$ver-manifest.json"
-          $appzip = "ApkStart-v$ver-app.zip"
-          $incArgs = @("--extra", $manifest, "--extra", $appzip)
-          if (Test-Path $notes) {
-            node tools/publish-gitee.js $tag --zip "ApkStart-$tag-win64-portable.zip" --notes $notes @incArgs
-          } else {
-            node tools/publish-gitee.js $tag --zip "ApkStart-$tag-win64-portable.zip" @incArgs
-          }
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
   full:
-    name: 构建完整版（内置运行时，离线开箱即用）
+    name: 构建完整版（内置运行时，离线开箱即用，x64）
     runs-on: windows-latest
     needs: build
     steps:
@@ -156,8 +115,6 @@ jobs:
 
       # prepare-runtime 会把 system.img/vendor.img 压成 xz(LZMA2)。
       # CI runner 只有 2 核：XZ_PRESET=6 把压缩时间从 ~2h 降到 ~40min（体积 +3%）。
-      # XZ_TIMEOUT_MS 是看门狗：超时自动 kill 并落 gzip 兜底，
-      # 绝不重演「stdin 没接 EOF → 0 字节输出 → 挂死 3 小时」。
       - name: 准备运行时（xz 压缩，CI 降档加速）
         run: node build/prepare-runtime.js --force
         env:
@@ -166,7 +123,6 @@ jobs:
 
       # 内置微软 VC++ 2015-2022 x64 运行库：安卓模拟器（Qt6）与 qemu 都依赖它，
       # 缺了在「其他电脑」上会直接起不来（0xc0000135 / MSVCP140 缺失）。
-      # 放到 build/runtime 内，随 extraResources 一起打进安装包；离线也能一键安装。
       - name: 下载 VC++ 运行库（离线内置）
         shell: pwsh
         run: |
@@ -178,11 +134,12 @@ jobs:
           if (-not (Test-Path $out) -or (Get-Item $out).Length -lt 1MB) { Write-Error "vc_redist 下载失败" }
           Get-Item $out | Select-Object Name, Length
 
-      # 不打 git tag 时 electron-builder 不会隐式发布；打了 tag 也会因为本 job 没有
-      # GH_TOKEN 而报 "GitHub Personal Access Token is not set" 后退出 1（之前完整版一直失败的根因）。
-      # 这里显式 --publish never，安装包由后面「上传完整版到 Release」步骤用 gh release upload 上传。
-      - name: 构建完整版安装包
-        run: npx electron-builder --win nsis --publish never
+      # 不打 git tag 时 electron-builder 不会隐式发布；这里显式 --publish never，
+      # 安装包由后面「上传完整版到 Release」步骤用 gh release upload 上传。
+      # 必须显式 --x64：配置里 nsis 目标声明了 x64+arm64 两个架构，若不限架构，
+      # 这个 job 会把 x64 运行时打进 arm64 安装包（arm64 包必须是运行时无关的轻量壳）。
+      - name: 构建完整版安装包（x64）
+        run: npx electron-builder --win nsis --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
@@ -205,15 +162,14 @@ jobs:
           gh release view $tag --json assets --jq '.assets[] | "\(.name) \(.size)"'
 
       # 轻量版（不带运行时）不再去 dl.google.com 逐个下 emulator / 系统镜像，
-      # 而是直接下这一个整包 —— 下载源与「软件更新」同为本项目 GitHub Release，
-      # 国内网络稳定性、出问题后的排障都只在一个地方。
+      # 而是直接下这一个整包 —— 下载源与「软件更新」同为 fork 自己的 GitHub Release。
       # 内容已经是 .xz 压缩过的镜像，这里用 bsdtar 直接打 zip（不再二次压缩，省几十分钟）。
       - name: 打包运行时整包（轻量版下载源）
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
           if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
-          $zip = "ApkStart-runtime-$tag.zip"
+          $zip = "zApkStart-runtime-$tag.zip"
           if (-not (Test-Path "build\runtime\emulator\emulator.exe")) { Write-Error "build\runtime 不完整"; exit 1 }
           tar.exe -a -cf $zip -C "build\runtime" .
           if ($LASTEXITCODE -ne 0) { Write-Error "打包运行时失败"; exit 1 }
@@ -226,11 +182,78 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
-          $zip = "ApkStart-runtime-$tag.zip"
+          $zip = "zApkStart-runtime-$tag.zip"
           $ok = $false
           for ($i = 1; $i -le 3 -and -not $ok; $i++) {
             gh release upload $tag $zip --clobber
             if ($LASTEXITCODE -eq 0) { $ok = $true } else { Start-Sleep -Seconds 20 }
           }
           if (-not $ok) { Write-Error "上传失败: $zip"; exit 1 }
+          gh release view $tag --json assets --jq '.assets[] | "\(.name) \(.size)"'
+
+  arm64:
+    name: 构建 ARM64（壳层原生，运行时无关）
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+
+      # extraResources 指向 build/runtime（x64 内容）。arm64 包不带运行时 ——
+      # Google 不发布 Windows-ARM64 模拟器，arm64 用户首次启动由应用自己引导下载
+      # x64 运行时整包（ zApkStart-runtime-<tag>.zip，配合显式 opt-in 门）。
+      # electron-builder 的 extraResources 源目录缺失会直接失败，这里放一个占位文件。
+      - name: 占位运行时目录（arm64 包不带运行时）
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "build\runtime" | Out-Null
+          Set-Content -Path "build\runtime\ARM64-NO-RUNTIME.txt" `
+            -Value "zApkStart arm64 packages ship without the x64 runtime. The app downloads it on first boot."
+
+      # 先出 --dir（不压缩），做 PE 头架构门：Machine 必须是 0xAA64（ARM64），
+      # 防止哪天 electron dist 拉错架构还悄悄发出去。rcedit 写版本资源在 x64 host
+      # 上编辑 ARM64 PE 是常规操作，这里顺带验证写完之后 PE 头没被破坏。
+      - name: 构建 arm64 未打包目录 + PE 架构门
+        shell: pwsh
+        run: |
+          npx electron-builder --win --dir --arm64 --publish never
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exe = Get-ChildItem "dist/win-unpacked*/zApkStart.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { $exe = Get-ChildItem "dist/**/zApkStart.exe" | Where-Object { $_.FullName -notlike '*win-arm64*' -eq $false } | Select-Object -First 1 }
+          if (-not $exe) { Write-Error "未找到 arm64 产物 zApkStart.exe"; exit 1 }
+          node scripts/check-pe-arch.js $exe.FullName --expect arm64
+          if ($LASTEXITCODE -ne 0) { Write-Error "PE 架构门失败：产物不是 ARM64"; exit $LASTEXITCODE }
+
+      - name: 构建 arm64 NSIS 安装包 + 便携 zip
+        run: |
+          npx electron-builder --win nsis --arm64 --publish never
+          npx electron-builder --win zip --arm64 -c.artifactName=\"\${productName}-\${version}-win64-arm64-portable.\${ext}\" --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: 上传 arm64 产物到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
+          $setup = Get-ChildItem dist/release/*arm64*Setup.exe | Select-Object -First 1
+          $zip = Get-ChildItem dist/release/*arm64*.zip | Select-Object -First 1
+          if (-not $setup -or -not $zip) { Write-Error "未找到 arm64 产物"; exit 1 }
+          $ok = $false
+          for ($i = 1; $i -le 3 -and -not $ok; $i++) {
+            gh release upload $tag $setup.FullName $zip.FullName --clobber
+            if ($LASTEXITCODE -eq 0) { $ok = $true } else { Start-Sleep -Seconds 20 }
+          }
+          if (-not $ok) { Write-Error "上传失败: $($setup.Name) / $($zip.Name)"; exit 1 }
           gh release view $tag --json assets --jq '.assets[] | "\(.name) \(.size)"'

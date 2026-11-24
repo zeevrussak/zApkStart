@@ -185,7 +185,9 @@ async function collect(ctx) {
     running,
     phase,
     ready,
-    bootMs: bootingSince ? Date.now() - bootingSince : 0,
+    // 当前底座（'builtin' | 'wsa'）：WSA 模式下 AVD 锁 / 孤儿 qemu / 快照 / 加速
+    // 这些「自带运行时」的体检类整体不适用（判定层据此跳过）。
+    backend: (status && status.backend) || (() => { try { return runtime.backendId; } catch (_) { return ''; } })(),
     error: (status && status.error && !/缺少 adb/.test(status.error)) ? status.error : '',
     lastFailure: lastFailure ? { error: lastFailure.error || lastFailure.reason || '' } : null,
     locks: paths ? countLocks(paths.avdHome) : 0,

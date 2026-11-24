@@ -42,13 +42,13 @@ html, body {
 }
 .aura {
   width: 90%; height: 90%;
-  left: 5%; top: 3%;
+  inset-inline-start: 5%; top: 3%;
   background: radial-gradient(circle, rgba(18, 184, 134, .09) 0%, rgba(15, 157, 99, .03) 42%, transparent 70%);
   animation: auraBreath 7s ease-in-out infinite;
 }
 .halo {
   width: 62%; height: 62%;
-  left: 19%; top: 12%;
+  inset-inline-start: 19%; top: 12%;
   background: radial-gradient(circle, rgba(79, 140, 255, .07) 0%, transparent 68%);
   animation: auraBreath 7s ease-in-out infinite reverse;
 }
@@ -62,7 +62,7 @@ html, body {
 /* logo 背后的柔光，随 logo 一起呼吸 */
 .logo-glow {
   position: absolute;
-  top: 48px; left: 50%;
+  top: 48px; inset-inline-start: 50%;
   width: 132px; height: 132px;
   margin: -66px 0 0 -66px;
   background: radial-gradient(circle, rgba(18, 184, 134, .28) 0%, rgba(15, 157, 99, .10) 45%, transparent 72%);
@@ -150,7 +150,7 @@ html, body {
 }
 .first-run-list li::before {
   content: '·';
-  margin-right: 8px;
+  margin-inline-end: 8px;
   color: #0f9d63;
 }
 

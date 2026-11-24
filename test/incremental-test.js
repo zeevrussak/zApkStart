@@ -143,10 +143,10 @@ console.log('\n[增量 · 哈希校验]');
     fs.writeFileSync(path.join(payload, 'resources', 'app', 'package.json'), '{}');
     u._markPayloadReady(payload, '0.6.3', 'app');
     assert(u.findResumableJob().mode === 'app', '标记前可续做');
-    fs.writeFileSync(path.join(dataDir, 'update', '0.6.3', '.apkstart-force-full'), '');
+    fs.writeFileSync(path.join(dataDir, 'update', '0.6.3', '.zapkstart-force-full'), '');
     assert(u.findResumableJob() === null, '标记后不能再续做增量');
     const script = u.apply({ mode: 'app', payload, version: '0.6.3' }, { spawn: false });
-    assert(/\.apkstart-force-full/.test(script), 'apply 失败分支要写强制完整包标记');
+    assert(/\.zapkstart-force-full/.test(script), 'apply 失败分支要写强制完整包标记');
   });
 
   test('增量载荷可被 findResumableJob 找回，完整载荷仍兼容', () => {

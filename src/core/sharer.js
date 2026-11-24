@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const store = require('./store');
+const { t } = require('./i18n');
 
 const MAX_FILE = 512 * 1024 * 1024; // 单文件 512MB 上限
 
@@ -64,7 +65,7 @@ class Sharer {
     const result = { pushed: 0, pulled: 0, errors: [] };
     try {
       const client = this.runtime.client();
-      if (!(await client.isOnline())) throw new Error('运行时未连接');
+      if (!(await client.isOnline())) throw new Error(t('sharer.not_connected'));
       await this.ensureDirs(onLog);
       const state = this.loadState();
 

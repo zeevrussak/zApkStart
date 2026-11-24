@@ -1,9 +1,11 @@
 'use strict';
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
+// 渲染层 t() 在 preload 这一侧现造：i18n:state 只传纯数据（函数过不了 structured clone）
+const i18n = require('./core/i18n');
 
 const invoke = (channel, payload) => ipcRenderer.invoke(channel, payload);
 
-contextBridge.exposeInMainWorld('apkstart', {
+contextBridge.exposeInMainWorld('zapkstart', {
   info: () => invoke('app:info'),
   listApps: () => invoke('apps:list'),
   pickApk: () => invoke('apk:pick'),
@@ -22,6 +24,19 @@ contextBridge.exposeInMainWorld('apkstart', {
 
   getSettings: () => invoke('settings:get'),
   setSettings: (patch) => invoke('settings:set', patch),
+  // 界面语言：主进程解析好的 { locale, dir, pref, osLocale } + 本地现造的 t；
+  // 语言切换时经 i18n:changed 推送（载荷同为纯数据，这里补上 t 再回调）
+  i18n: {
+    state: async () => {
+      const s = await invoke('i18n:state');
+      return { ...s, t: i18n.makeT(s.pref, s.osLocale) };
+    },
+    onChange: (cb) => {
+      const handler = (_e, payload) => cb({ ...payload, t: i18n.makeT(payload.pref, payload.osLocale) });
+      ipcRenderer.on('i18n:changed', handler);
+      return () => ipcRenderer.removeListener('i18n:changed', handler);
+    },
+  },
   restoreSystemApps: () => invoke('settings:restoreSystem'),
   refreshPointerMapping: () => invoke('settings:refreshPointer'),
   restoreMouseHook: () => invoke('settings:unhook'),
@@ -165,7 +180,7 @@ contextBridge.exposeInMainWorld('apkstart', {
     const allowed = [
       'install:start', 'install:progress', 'install:done', 'install:error',
       'app:launched', 'runtime:log', 'toast', 'ui:navigate', 'provision:progress',
-      'update:progress', 'update:state', 'autodebug:state',
+      'update:progress', 'update:state', 'autodebug:state', 'i18n:changed',
     ];
     if (!allowed.includes(channel)) return () => {};
     const handler = (_e, payload) => cb(payload);
