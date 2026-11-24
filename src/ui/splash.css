@@ -1,0 +1,194 @@
+/* ApkStart 开机动画 · 极简苹果风
+   大面积留白 + 柔和模糊光晕 + logo 缓慢呼吸 + 细腻淡入淡出。
+   所有循环动效只改 transform / opacity，blur 只作用在静态层，保证开机不卡。 */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #0b0c0e;
+  color: #e8eaed;
+  -webkit-app-region: drag;   /* 整个窗口可拖动 */
+  user-select: none;
+}
+
+.splash {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 100% at 50% 42%, #15181b 0%, #0d0e10 58%, #08090b 100%);
+  transition: opacity .55s cubic-bezier(.4, 0, .2, 1),
+              transform .55s cubic-bezier(.4, 0, .2, 1),
+              filter .55s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* 淡出：整体轻微放大 + 失焦，化进应用 */
+.splash.out {
+  opacity: 0;
+  transform: scale(1.03);
+  filter: blur(6px);
+}
+
+/* ---- 氛围光：两团极淡的冷光，缓慢呼吸 ---- */
+.aura, .halo {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(30px);
+}
+.aura {
+  width: 90%; height: 90%;
+  left: 5%; top: 3%;
+  background: radial-gradient(circle, rgba(18, 184, 134, .09) 0%, rgba(15, 157, 99, .03) 42%, transparent 70%);
+  animation: auraBreath 7s ease-in-out infinite;
+}
+.halo {
+  width: 62%; height: 62%;
+  left: 19%; top: 12%;
+  background: radial-gradient(circle, rgba(79, 140, 255, .07) 0%, transparent 68%);
+  animation: auraBreath 7s ease-in-out infinite reverse;
+}
+
+/* ---- Logo ---- */
+.logo-wrap {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  animation: rise .9s cubic-bezier(.2, .7, .3, 1) both;
+}
+/* logo 背后的柔光，随 logo 一起呼吸 */
+.logo-glow {
+  position: absolute;
+  top: 48px; left: 50%;
+  width: 132px; height: 132px;
+  margin: -66px 0 0 -66px;
+  background: radial-gradient(circle, rgba(18, 184, 134, .28) 0%, rgba(15, 157, 99, .10) 45%, transparent 72%);
+  filter: blur(18px);
+  border-radius: 50%;
+  animation: glowBreath 4s ease-in-out infinite;
+  pointer-events: none;
+}
+.logo {
+  position: relative;
+  width: 92px; height: 92px;
+  object-fit: contain;
+  animation: breathe 4s ease-in-out infinite;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .4));
+}
+.brand {
+  position: relative;
+  margin-top: 20px;
+  font-size: 27px; font-weight: 600;
+  letter-spacing: .8px;
+  color: #f2f5f3;
+  opacity: 0;
+  animation: fadeUp .85s ease-out .2s both;
+}
+.tagline {
+  position: relative;
+  margin-top: 7px;
+  font-size: 12.5px; color: #74817a;
+  letter-spacing: .4px;
+  opacity: 0;
+  animation: fadeUp .85s ease-out .34s both;
+}
+
+/* ---- 进度条 ---- */
+.progress-wrap {
+  position: relative;
+  margin-top: 40px;
+  width: 260px; height: 2px;
+  background: rgba(255, 255, 255, .08);
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+  animation: fadeUp .85s ease-out .5s both;
+}
+.progress-bar {
+  width: 0%; height: 100%;
+  background: linear-gradient(90deg, rgba(15, 157, 99, .7), #12b886);
+  border-radius: 2px;
+  transition: width .5s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ---- 状态文字 ---- */
+.status {
+  position: relative;
+  margin-top: 15px;
+  font-size: 12.5px; color: #8a9a92;
+  letter-spacing: .2px;
+  min-height: 18px;
+  opacity: 0;
+  animation: fadeUp .85s ease-out .62s both;
+  transition: opacity .35s;
+}
+
+/* ---- 首次安装提示 ---- */
+.first-run {
+  position: relative;
+  margin-top: 26px;
+  padding: 15px 22px;
+  background: rgba(255, 255, 255, .035);
+  border: 1px solid rgba(255, 255, 255, .055);
+  border-radius: 12px;
+  max-width: 372px;
+  opacity: 0;
+  animation: fadeUp .7s ease-out .78s both;
+}
+.first-run-title {
+  font-size: 12.5px; font-weight: 600;
+  color: #12b886;
+  margin-bottom: 9px;
+}
+.first-run-list {
+  list-style: none;
+  font-size: 11.5px; color: #8a9a92;
+  line-height: 1.85;
+}
+.first-run-list li::before {
+  content: '·';
+  margin-right: 8px;
+  color: #0f9d63;
+}
+
+/* ---- 底部 ---- */
+.footer {
+  position: absolute; bottom: 15px;
+  font-size: 10.5px; color: #46514b;
+  letter-spacing: .3px;
+  opacity: 0;
+  animation: fadeUp .85s ease-out .95s both;
+}
+
+/* ---- 动画关键帧 ---- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.035); }
+}
+@keyframes glowBreath {
+  0%, 100% { opacity: .5; transform: scale(.95); }
+  50%      { opacity: 1;  transform: scale(1.07); }
+}
+@keyframes auraBreath {
+  0%, 100% { opacity: .55; transform: scale(.97); }
+  50%      { opacity: 1;  transform: scale(1.05); }
+}
+
+/* 尊重系统「减少动态效果」偏好：关掉循环动效，只保留静态呈现 */
+@media (prefers-reduced-motion: reduce) {
+  .aura, .halo, .logo-glow, .logo { animation: none !important; }
+  .logo-wrap, .brand, .tagline, .progress-wrap, .status, .first-run, .footer {
+    animation-duration: .01ms !important; opacity: 1;
+  }
+}

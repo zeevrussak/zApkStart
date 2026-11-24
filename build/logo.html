@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  :root { --bg: #14161b; --acc: #3ddc84; }
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  /* 渲染窗口比舞台大时，让舞台居中，方便按坐标裁剪 */
+  body { display: grid; width: 100vw; height: 100vh; place-items: center; }
+  .stage { position: relative; overflow: hidden; }
+
+  /* ================= 主标（1024） ================= */
+  .square-stage { display: grid; width: 1024px; height: 1024px; place-items: center; }
+  .tile {
+    position: relative; width: 896px; height: 896px; border-radius: 208px;
+    background:
+      radial-gradient(120% 90% at 18% 8%, #243444 0%, #131c25 46%, #0b1016 100%);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.14), inset 0 -30px 70px rgba(0,0,0,.55);
+    overflow: hidden;
+  }
+  /* 斜向高光 */
+  .tile::before {
+    content: ""; position: absolute; inset: -40% -20% auto -60%; height: 130%;
+    background: linear-gradient(104deg, rgba(255,255,255,0) 34%, rgba(255,255,255,.10) 47%, rgba(255,255,255,0) 60%);
+    transform: rotate(-6deg);
+  }
+  /* 网格点阵 */
+  .dots {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.10) 1.6px, transparent 1.7px);
+    background-size: 46px 46px; background-position: 22px 22px;
+    opacity: .5;
+    mask-image: radial-gradient(78% 78% at 50% 46%, #000 30%, transparent 78%);
+    -webkit-mask-image: radial-gradient(78% 78% at 50% 46%, #000 30%, transparent 78%);
+  }
+  /* 底部绿色辉光 */
+  .glow {
+    position: absolute; left: 50%; bottom: -180px; width: 860px; height: 460px;
+    transform: translateX(-50%);
+    background: radial-gradient(closest-side, rgba(61,220,132,.42), rgba(61,220,132,0) 72%);
+    filter: blur(8px);
+  }
+  .content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .apk {
+    font-family: "Arial Black", "Segoe UI Black", "Segoe UI", Arial, sans-serif;
+    font-weight: 900; font-size: 292px; line-height: .86; letter-spacing: -8px;
+    background: linear-gradient(178deg, #ffffff 26%, #dfe9f2 62%, #b9cad9 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 12px 34px rgba(0,0,0,.45);
+    margin-top: -34px;
+  }
+  .bar {
+    width: 372px; height: 12px; border-radius: 8px; margin: 26px 0 30px;
+    background: linear-gradient(90deg, rgba(61,220,132,0) 0%, #3ddc84 22%, #6ff0a8 50%, #3ddc84 78%, rgba(61,220,132,0) 100%);
+    box-shadow: 0 0 34px rgba(61,220,132,.55);
+  }
+  .start {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700; font-size: 146px; line-height: 1; letter-spacing: 3px;
+    color: #3ddc84;
+    text-shadow: 0 0 42px rgba(61,220,132,.45);
+  }
+  /* 点缀：播放键 + 火花 */
+  .spark { position: absolute; background: #6ff0a8; border-radius: 50%; box-shadow: 0 0 26px rgba(111,240,168,.8); }
+  .s1 { width: 16px; height: 16px; right: 176px; top: 214px; opacity: .95; }
+  .s2 { width: 9px; height: 9px; right: 136px; top: 268px; opacity: .6; }
+  .s3 { width: 11px; height: 11px; left: 168px; bottom: 236px; opacity: .55; }
+  .tri { position: absolute; left: 150px; top: 200px; width: 0; height: 0;
+    border-left: 30px solid #3ddc84; border-top: 18px solid transparent; border-bottom: 18px solid transparent;
+    filter: drop-shadow(0 0 18px rgba(61,220,132,.7)); opacity: .9;
+  }
+  /* 四角刻度 */
+  .corner { position: absolute; width: 62px; height: 62px; border: 5px solid rgba(255,255,255,.16); border-radius: 18px; }
+  .c1 { left: 92px; top: 92px; border-right: 0; border-bottom: 0; }
+  .c2 { right: 92px; bottom: 92px; border-left: 0; border-top: 0; }
+
+  /* ================= 主标缩略（横版 / 启动图共用同一份 DOM） ================= */
+  .scaled-tile { position: relative; overflow: hidden; flex: none; }
+  .scaled-tile > .tile { position: absolute; top: 0; left: 0; transform-origin: top left; }
+  .scaled-tile.wide-mark { width: 176px; height: 176px; }
+  .scaled-tile.wide-mark > .tile { transform: scale(0.196429); }   /* 176 / 896 */
+  .scaled-tile.splash-mark { width: 236px; height: 236px; }
+  .scaled-tile.splash-mark > .tile { transform: scale(0.263393); } /* 236 / 896 */
+
+  /* ================= wide 宽磁贴（620x300 渲染 → 310x150） ================= */
+  .wide-stage { display: none; width: 620px; height: 300px; }
+  .wide-tile {
+    position: relative; width: 620px; height: 300px; overflow: hidden;
+    background: radial-gradient(130% 150% at 8% 0%, #1e2b38 0%, #131a22 50%, #0b1016 100%);
+    display: flex; align-items: center; padding: 0 46px; gap: 38px;
+  }
+  .wide-tile .dots { opacity: .28; }
+  .wide-tile .glow { width: 620px; height: 260px; left: 22%; bottom: -130px; opacity: .8; }
+  .wide-tile .corner { width: 34px; height: 34px; border-width: 3px; border-radius: 10px; }
+  .wide-tile .c1 { left: 26px; top: 26px; }
+  .wide-tile .c2 { right: 26px; bottom: 26px; }
+  .wide-text { position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; }
+  .wide-name {
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-weight: 700; font-size: 42px; line-height: 1.1; letter-spacing: 1px;
+    color: #f4f8fb;
+  }
+  .wide-sub {
+    margin-top: 14px;
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 24px; letter-spacing: .5px; color: #8ba0b2;
+  }
+  .wide-sub b { color: #3ddc84; font-weight: 600; }
+
+  /* ================= splash 启动图（1240x600 渲染 → 620x300） ================= */
+  .splash-stage { display: none; width: 1240px; height: 600px; }
+  .splash-tile {
+    position: relative; width: 1240px; height: 600px; overflow: hidden;
+    background: radial-gradient(120% 120% at 50% 0%, #1b2733 0%, #121820 48%, #0a0e13 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 46px;
+  }
+  .splash-tile .dots { opacity: .3; }
+  .splash-tile .glow { width: 900px; height: 380px; bottom: -210px; }
+  .splash-sub {
+    position: relative; z-index: 2;
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 30px; letter-spacing: 3px; color: #8ba0b2;
+  }
+
+  body.layout-wide .square-stage,
+  body.layout-splash .square-stage { display: none; }
+  body.layout-wide .wide-stage { display: grid; place-items: center; }
+  body.layout-splash .splash-stage { display: grid; place-items: center; }
+</style>
+</head>
+<body>
+  <!-- 主标源：安装包 / 窗口 / 商店大磁贴；横版与启动图克隆它 -->
+  <div class="stage square-stage">
+    <div class="tile" id="brand-tile">
+      <div class="dots"></div>
+      <div class="glow"></div>
+      <div class="corner c1"></div>
+      <div class="corner c2"></div>
+      <div class="content">
+        <div class="apk">APK</div>
+        <div class="bar"></div>
+        <div class="start">start</div>
+      </div>
+      <div class="tri"></div>
+      <div class="spark s1"></div>
+      <div class="spark s2"></div>
+      <div class="spark s3"></div>
+    </div>
+  </div>
+
+  <!-- 宽磁贴：商店 Wide310x150，左主标缩略 + 右说明 -->
+  <div class="stage wide-stage">
+    <div class="wide-tile">
+      <div class="dots"></div>
+      <div class="glow"></div>
+      <div class="corner c1"></div>
+      <div class="corner c2"></div>
+      <div class="scaled-tile wide-mark"></div>
+      <div class="wide-text">
+        <div class="wide-name">安卓应用运行器</div>
+        <div class="wide-sub">双击 <b>APK</b>，即刻运行</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 启动图：商店 SplashScreen 620x300，主标居中 -->
+  <div class="stage splash-stage">
+    <div class="splash-tile">
+      <div class="dots"></div>
+      <div class="glow"></div>
+      <div class="scaled-tile splash-mark"></div>
+      <div class="splash-sub">双击 APK，即刻运行</div>
+    </div>
+  </div>
+
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var layout = q.get('layout') || 'square';
+    document.body.classList.add('layout-' + layout);
+    // 横版 / 启动图复用主标 DOM，保证三处几何完全一致
+    var src = document.getElementById('brand-tile');
+    if (src) {
+      document.querySelectorAll('.scaled-tile').forEach(function (host) {
+        var clone = src.cloneNode(true);
+        clone.removeAttribute('id');
+        host.appendChild(clone);
+      });
+    }
+  })();
+</script>
+</body>
+</html>

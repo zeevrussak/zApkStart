@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0a0e13; }
+  body { font-family: "Microsoft YaHei", "Segoe UI", sans-serif; }
+  .canvas {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background:
+      radial-gradient(90% 120% at 8% 0%, #1b2a37 0%, #111821 46%, #080c11 100%);
+    display: flex; align-items: center;
+  }
+  .dots {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.07) 1.4px, transparent 1.5px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(70% 80% at 30% 50%, #000 25%, transparent 80%);
+    -webkit-mask-image: radial-gradient(70% 80% at 30% 50%, #000 25%, transparent 80%);
+  }
+  .glow {
+    position: absolute; left: -140px; bottom: -260px; width: 900px; height: 700px;
+    background: radial-gradient(closest-side, rgba(61,220,132,.26), rgba(61,220,132,0) 72%);
+    filter: blur(20px);
+  }
+  .left { position: relative; z-index: 2; width: 720px; padding: 0 0 0 96px; flex: none; }
+  .kicker {
+    font-size: 22px; letter-spacing: 6px; color: #3ddc84; font-weight: 700; margin-bottom: 26px;
+  }
+  h1 {
+    font-size: 78px; line-height: 1.14; color: #f2f7fb; font-weight: 700;
+    letter-spacing: 1px; text-shadow: 0 10px 40px rgba(0,0,0,.55);
+  }
+  h1 em { font-style: normal; color: #3ddc84; }
+  p {
+    margin-top: 30px; font-size: 27px; line-height: 1.72; color: #93a7b8; letter-spacing: .3px;
+  }
+  .brand { display: flex; align-items: center; gap: 16px; margin-top: 58px; }
+  .brand img { width: 54px; height: 54px; }
+  .brand span { font-size: 27px; font-weight: 700; color: #e7eef5; letter-spacing: 1px; }
+
+  .right {
+    position: relative; z-index: 2; flex: 1; height: 100%;
+    display: flex; align-items: center; justify-content: center; padding-right: 90px;
+  }
+  .frame {
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 40px 90px rgba(0,0,0,.62), 0 0 0 1px rgba(255,255,255,.12);
+    background: #14161b;
+  }
+  .frame.wide img { display: block; width: 1120px; height: auto; }
+  .frame.portrait {
+    border-radius: 30px; padding: 12px; background: #0b0f14;
+    box-shadow: 0 40px 90px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.14), inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .frame.portrait img { display: block; height: 840px; width: auto; border-radius: 20px; }
+
+  /* 三种版式：默认 1，body.s2 / body.s3 覆盖 */
+  .s2-only, .s3-only { display: none; }
+  body.s2 .s1-only, body.s3 .s1-only { display: none; }
+  body.s2 .s2-only, body.s3 .s3-only { display: block; }
+  body.s2 .s2-only.flex, body.s3 .s3-only.flex { display: flex; }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="dots"></div>
+    <div class="glow"></div>
+
+    <div class="left">
+      <div class="kicker s1-only">APKSTART · WINDOWS</div>
+      <div class="kicker s2-only">一个应用 · 一个窗口</div>
+      <div class="kicker s3-only">安装很简单</div>
+
+      <h1 class="s1-only">双击 APK<br><em>即刻运行</em></h1>
+      <h1 class="s2-only">每个应用<br><em>都是独立窗口</em></h1>
+      <h1 class="s3-only">拖进来<br><em>就装好了</em></h1>
+
+      <p class="s1-only">不用开模拟器，不用配环境。<br>双击 .apk 自动安装，桌面上直接多一个应用图标。</p>
+      <p class="s2-only">竖屏应用保持手机比例铺满屏幕，<br>窗口模式自由缩放，每个应用单独记忆尺寸。</p>
+      <p class="s3-only">把 .apk 拖进窗口，或在资源管理器里双击。<br>自动解析、安装、生成桌面图标，全程不用配置。</p>
+
+      <div class="brand">
+        <img src="../src/ui/assets/logo-64.png" alt="" />
+        <span>ApkStart</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="frame wide s1-only"><img src="../docs/store-shots/raw-main.png" alt="" /></div>
+      <div class="frame portrait s2-only"><img src="../docs/images/compat-hongguo-playing.png" alt="" /></div>
+      <div class="frame wide s3-only"><img src="../docs/store-shots/raw-runtime.png" alt="" /></div>
+    </div>
+  </div>
+<script>
+  (function () {
+    var m = /[?&]shot=(\d)/.exec(location.search);
+    var n = m ? m[1] : '1';
+    if (n !== '1') document.body.classList.add('s' + n);
+  })();
+</script>
+</body>
+</html>
