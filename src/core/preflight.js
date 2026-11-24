@@ -27,6 +27,13 @@ const arch = require('./arch');
 const { t } = require('./i18n');
 const brand = require('./brand');
 
+/**
+ * WSA 社区续作的链接（docs/zapkstart/wsa-backend.md 链接措辞规则）：
+ * 只在用户显式点击时经 shell.openExternal 打开，绝不自动打开；卡片文案保持中性 ——
+ * 微软已于 2025-03 结束 WSA 支持，社区续作与微软无隶属/背书关系，先看条款再装。
+ */
+const WSA_BUILDS_URL = 'https://github.com/MustardChef/WSABuilds';
+
 // ---------------- 探测 ----------------
 
 /**
@@ -110,6 +117,10 @@ async function collect({ accel = null } = {}) {
   // 机器真实架构走 arch.hostArch()（与上面的 PowerShell 探测并行；arch.js 自带缓存）。
   // 不能用 process.arch：ARM64 宿主上 x64 进程自报 x64（见 src/core/arch.js 头注释）。
   const machineArch = await arch.hostArch();
+  // WSA 探测与硬件脚本并行（arch.detectWsa 自带 60 秒 TTL 缓存，第二次起零成本）。
+  // 探测结论只决定体检卡片，不影响 tier / 引擎默认值（QEMU 门不能重新打开）。
+  const wsaProbe = await arch.detectWsa().catch(() => null);
+  const wsaEngine = wsaProbe ? (wsaProbe.found ? 'available' : 'absent') : 'unknown';
   const [raw, feats] = process.platform === 'win32'
     ? await Promise.all([psJson(HW_SCRIPT), psJson(FEATURE_SCRIPT)])
     : [null, null];
@@ -164,6 +175,8 @@ async function collect({ accel = null } = {}) {
     arch: process.arch,
     // 机器架构真相（arch.hostArch()）；ARM64 判断一律用它，process.arch 只是二进制架构。
     machineArch,
+    // WSA Appx 包探测结论：'available' | 'absent' | 'unknown'（evaluate 据此出卡片）
+    wsaEngine,
     osBuild: (() => {
       const m = /(\d+)\s*$/.exec(os.release() || '');
       return m ? Number(m[1]) : 0;
@@ -249,7 +262,7 @@ function recommendGpu({ vendor = 'unknown', accelOk = false, vramMB = 0 } = {}) 
  * @param {object} o { hw, settings, edition } edition: 'store' | 'installer'
  * @returns {{ level:string, items:Array, patch:object|null, driver:object|null, summary:string }}
  */
-function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
+function evaluate({ hw = {}, settings = {}, edition = 'installer', wsa = null } = {}) {
   const v = hw.virtualization || {};
   const cpu = hw.cpu || {};
   const gpu = hw.gpu || {};
@@ -260,6 +273,8 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
   // machineArch 字段时按 x64 处理（x64 行为完全不变），原生 ARM64 构建的 hw.arch 也认。
   const machineArch = hw.machineArch
     || (String(hw.arch || process.arch) === 'arm64' ? 'arm64' : 'x64');
+  // WSA 探测结论：显式入参优先（单测注入），其次 collect 塞进 hw 的字段。
+  const wsaEngine = wsa || hw.wsaEngine || 'unknown';
 
   const add = (item) => items.push(item);
 
@@ -337,6 +352,50 @@ function evaluate({ hw = {}, settings = {}, edition = 'installer' } = {}) {
       detail: t('preflight.whpx_off_installer_detail'),
       action: { kind: 'elevate', id: 'virtualization', label: t('preflight.whpx_off_installer_action') },
     });
+  }
+
+  // ---- 2.5 WSA（检测式底座，docs/zapkstart/wsa-backend.md）----
+  // 卡片只陈述事实 + 中性链接：微软已于 2025-03 结束 WSA 支持；社区续作
+  // （MustardChef/WSABuilds）与微软无隶属/背书关系，先看条款再装 ——
+  // 链接只在用户显式点击时打开（shell.openExternal），绝不自动打开，
+  // 也绝不说「推荐安装」任何微软的东西。
+  if (wsaEngine === 'available' || wsaEngine === 'absent') {
+    const linkAction = {
+      kind: 'link',
+      id: 'wsabuilds',
+      label: t('preflight.wsa_link_action'),
+      url: WSA_BUILDS_URL,
+    };
+    if (machineArch === 'arm64' && wsaEngine === 'available') {
+      // ARM64 + WSA 已装：这就是本机事实上的推荐档位（原生 ARM64、无 CPU 模拟）——
+      // 是「能力描述」不是新的 tier 值（arch.js 的 tier 原样，QEMU 门不重开）。
+      add({
+        key: 'wsa-found',
+        level: 'ok',
+        title: t('preflight.wsa_found_title'),
+        detail: t('preflight.wsa_found_detail_arm64'),
+        action: linkAction,
+      });
+    } else if (machineArch === 'arm64') {
+      add({
+        key: 'wsa-absent',
+        level: 'warn',
+        title: t('preflight.wsa_absent_title'),
+        detail: t('preflight.wsa_absent_detail_arm64'),
+        action: linkAction,
+      });
+    } else if (wsaEngine === 'available') {
+      // x64 + WSA：纯信息卡 —— 顺带把 AEHD↔Hyper-V 的互动讲清楚（开 WSA 会打开
+      // Hyper-V，AEHD 随之不可用；两个引擎都还能用，QEMU 会落 WHPX/软件）。
+      add({
+        key: 'wsa-found-x64',
+        level: 'ok',
+        title: t('preflight.wsa_found_title'),
+        detail: t('preflight.wsa_found_detail_x64'),
+        action: null,
+      });
+    }
+    // x64 + absent：不出卡（x64 有完整的自带运行时，WSA 只是可选项）
   }
 
   // ---- 3. 硬件加速当前是否真的能用 ----
@@ -505,4 +564,5 @@ module.exports = {
   recommendResources,
   recommendGpu,
   psJson,
+  WSA_BUILDS_URL,
 };

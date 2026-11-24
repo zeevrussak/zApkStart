@@ -75,7 +75,7 @@ jobs:
       - name: PE 架构门（Machine == ARM64）
         shell: pwsh
         run: |
-          $exe = Get-ChildItem "dist/*.exe", "dist/*/zApkStart.exe", "dist/win-unpaired/zApkStart.exe", "dist/win-unpacked/zApkStart.exe" -ErrorAction SilentlyContinue |
+          $exe = Get-ChildItem "dist/release/win-arm64-unpacked/zApkStart.exe" -ErrorAction SilentlyContinue |
             Select-Object -First 1
           if (-not $exe) { Write-Error "未找到 arm64 产物 zApkStart.exe（--dir 输出）"; exit 1 }
           node scripts/check-pe-arch.js $exe.FullName --expect arm64

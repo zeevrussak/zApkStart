@@ -178,4 +178,11 @@ module.exports = {
 
   // ---- low disk ----
   toast_low_disk: 'Only {gb} GB of disk left; Android may fail to start (change the drive in Settings → System integration)',
+
+  // ---- per-app routing (WSA backend, docs/zapkstart/wsa-backend.md) ----
+  route_mismatch_builtin_on_wsa: '{app} was installed on the bundled runtime. Switch back to it, or reinstall for WSA — its data will not transfer.',
+  route_mismatch_wsa_on_builtin: '{app} was installed on WSA. Switch the engine to WSA, or reinstall on the bundled runtime — its data will not transfer.',
+  wsa_launch_ok: '{app} launched in WSA ({ms}ms): the app opens in its own WSA window',
+  uninstall_remote_only: 'Uninstalled the local entry. The app itself still lives on the other engine — switch the engine and uninstall again to remove it there.',
+
 };

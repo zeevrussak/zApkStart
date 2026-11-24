@@ -46,4 +46,7 @@ module.exports = {
   app_still_loading: '(app still loading)',
   ime_apk_missing: 'the input-method APK is missing',
   ime_not_registered: 'the input-method package is not registered',
+
+  // WSA variant of the anti-emulator verdict (docs/zapkstart/wsa-backend.md wording rules)
+  launch_anti_emulator_wsa: '{pkg} refuses emulated/virtual environments and exited on purpose. On WSA, device-integrity checks (Play Integrity / SafetyNet) may still block it — this is an app limitation, not a malfunction; core-lane WSA builds also have no Google services.',
 };

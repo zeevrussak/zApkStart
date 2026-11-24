@@ -988,6 +988,22 @@ function renderPreflight(res) {
       });
       wrap.append(btn);
       item.append(wrap);
+    } else if (it.action && it.action.kind === 'link') {
+      // 中性外链（WSA 指南等）：只有用户点这个按钮才经系统浏览器打开 ——
+      // 绝不自动打开，也绝不替用户「决定去装」什么。
+      const wrap = document.createElement('div');
+      wrap.className = 'pf-action';
+      const btn = document.createElement('button');
+      btn.className = 'btn ghost sm';
+      btn.textContent = it.action.label;
+      btn.addEventListener('click', () => {
+        btn.disabled = true;
+        Promise.resolve(api.wsaOpenGuide ? api.wsaOpenGuide() : null)
+          .catch(() => {})
+          .finally(() => { btn.disabled = false; });
+      });
+      wrap.append(btn);
+      item.append(wrap);
     } else if (it.action && it.action.kind === 'manual') {
       const wrap = document.createElement('div');
       wrap.className = 'pf-action pf-detail';
@@ -1179,6 +1195,48 @@ function fillSettings(s) {
   // 0.6.0 起默认原生窗口：只有显式 true 才是嵌入模式（旧配置里 undefined 视为原生）
   if ($('setWindowEmbed')) $('setWindowEmbed').value = d.windowEmbed === true ? 'embed' : 'detached';
   $('portraitField').hidden = $('setDisplayMode').value === 'fullscreen';
+  refreshEngineBackend(eng.mode || 'builtin').catch(() => {});
+}
+
+/**
+ * 引擎分段控件（docs/zapkstart/wsa-backend.md）：只在本机探测到 WSA 时显示。
+ * 探测未命中时保持只读的「自带运行时」标签（engineLabelRow），模式是唯一事实。
+ */
+async function refreshEngineBackend(mode) {
+  const row = $('engineBackendRow');
+  const labelRow = $('engineLabelRow');
+  const note = $('engineModeNote');
+  const warn = $('engineSwitchWarn');
+  if (!row || !labelRow) return;
+  let found = false;
+  try {
+    const r = await api.wsaDetect();
+    found = !!(r && r.found);
+  } catch (_) { found = false; }
+  row.hidden = !found;
+  labelRow.hidden = found;
+  if (!found) return;
+  $('setEngineBackend').value = mode === 'wsa' ? 'wsa' : 'builtin';
+  if (note) {
+    note.setAttribute('data-i18n', mode === 'wsa' ? 'ui.sub_runtime_mode_wsa' : 'ui.sub_runtime_only');
+    note.textContent = t(mode === 'wsa' ? 'ui.sub_runtime_mode_wsa' : 'ui.sub_runtime_only');
+  }
+  if (warn) warn.hidden = false;
+}
+
+/** 引擎切换的确认提示 + 保存（幂等：切回同一个值什么都不做） */
+async function onEngineBackendChange(e) {
+  const next = e.target.value;
+  const cur = await api.getSettings();
+  if ((cur.engine && cur.engine.mode) === next) return;
+  const ok = confirm(t('ui.engine_switch_confirm'));
+  if (!ok) {
+    e.target.value = (cur.engine && cur.engine.mode) === 'wsa' ? 'wsa' : 'builtin';
+    return;
+  }
+  state.settings = await api.setSettings({ engine: { mode: next } });
+  toast({ title: t('ui.engine_switch_done_title'), body: t('ui.engine_switch_done_body'), type: 'ok' });
+  refreshEngineBackend(next).catch(() => {});
 }
 
 /** 数据分区实际大小 + 磁盘余量，显示在设置页容量选择下方 */
@@ -1779,6 +1837,10 @@ function bindSettings() {
       save({ engine: { gpuPreference: e.target.value } });
       toast({ title: t('ui.gpu_pref_saved_title'), body: t('ui.gpu_pref_saved_body'), type: 'ok' });
     });
+  }
+  // 引擎分段控件（Bundled / WSA）：元素只在探测到 WSA 时可见（refreshEngineBackend）
+  if ($('setEngineBackend')) {
+    $('setEngineBackend').addEventListener('change', onEngineBackendChange);
   }
   if ($('setRenderSize')) {
     $('setRenderSize').addEventListener('change', (e) => save({ engine: { renderSize: e.target.value } }));

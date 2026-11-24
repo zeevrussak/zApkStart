@@ -1018,12 +1018,17 @@ require('../src/core/i18n').setActiveT('zh-CN', '');
     assert(!/w:\s*Math\.min\(area\.w - 80, 1280\)/.test(appwinJs), '不能再写死 1280 宽（会被模拟器夹成竖条）');
   });
 
-  await test('只有一个运行时：注册表固定 builtin，装了什么模拟器都不影响', () => {
+  await test('注册表只有 builtin 与 wsa（探测式）；自动挑选仍 builtin-only', () => {
     const backends = require('../src/core/backends');
-    // 0.5.6 起不再有自动挑选：不管本机装了 MuMu / 雷电 / 蓝叠 / WSA，
-    // 都只跑 ApkStart 自己的运行时，只按设置读也不会有第二个候选。
-    assert(backends.REGISTRY.length === 1, '注册表里出现了第二个底座');
-    assert(backends.REGISTRY[0].id === 'builtin', '唯一底座不是 builtin');
+    // docs/zapkstart/wsa-backend.md：WSA 以「检测式、只经 adb、显式 opt-in」回归，
+    // 第三方模拟器（MuMu / 雷电 / 蓝叠 / FydeOS）仍然整条禁止。
+    assert(backends.REGISTRY.length === 2, '注册表底座数量不对');
+    assert(backends.REGISTRY[0].id === 'builtin', '第一个底座不是 builtin');
+    assert(backends.REGISTRY[1].id === 'wsa', '第二个底座不是 wsa');
+    // 自动挑选永远落 builtin：「装了什么就用什么」的顺手接管绝不允许
+    return backends.autoPick().then((picked) => {
+      assert(picked.id === 'builtin' && picked.reason === 'builtin-only', `autoPick=${picked.id}`);
+    });
   });
 
   await test('窗口标题改 ApkStart：识别逻辑必须同时认新标题', () => {
@@ -2414,7 +2419,10 @@ require('../src/core/i18n').setActiveT('zh-CN', '');
     const root = path.join(__dirname, '..');
     const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
     const launchIdx = mainJs.indexOf('async function runLaunch(');
-    const body = mainJs.slice(launchIdx, launchIdx + 2600);
+    // 窗口取 4200 字符：runLaunch 之后紧跟 launchOne 的每应用路由前置段
+    // （routeForApp，WSA 底座，docs/zapkstart/wsa-backend.md）与原有注释，
+    // hide()/openAppWindow 都在窗口内，先后关系不变。
+    const body = mainJs.slice(launchIdx, launchIdx + 4200);
     const hideIdx = body.indexOf('mainWindow.hide()');
     const openIdx = body.indexOf('openAppWindow(pkg');
     assert(hideIdx > 0 && openIdx > 0, '两个调用都要在 runLaunch 里');

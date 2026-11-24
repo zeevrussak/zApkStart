@@ -46,4 +46,7 @@ module.exports = {
   app_still_loading: '（应用仍在加载中）',
   ime_apk_missing: '输入法 APK 缺失',
   ime_not_registered: '输入法包未注册',
+
+  // 反模拟结论的 WSA 版本（docs/zapkstart/wsa-backend.md 措辞规则）
+  launch_anti_emulator_wsa: '{pkg} 拒绝模拟器/虚拟环境后主动退出。在 WSA 上，设备完整性校验（Play Integrity / SafetyNet）仍可能拦住它 —— 这是应用自身的限制，不是故障；core-lane 的 WSA 构建也没有 Google 服务。',
 };

@@ -74,4 +74,12 @@ module.exports = {
   summary_bad: 'יש {count} בעיות שחייבות לטופל קודם ({titles})',
   summary_warn: 'יש {count} סעיפים שכדאי לשפר ({titles})',
   summary_good: 'המחשב הזה יכול לרוץ על האצת חומרה ישירות והתצורה כבר אופטימלית',
+
+  // ---- כרטיסי WSA (docs/zapkstart/wsa-backend.md wording rules: נימוס נייטרלי, לחיצה מפורשת) ----
+  wsa_found_title: 'WSA זוהה — הדרך המעשית להריץ אפליקציות באופן טבעי במחשב הזה',
+  wsa_found_detail_arm64: 'Android 13 עם ARM64 טבעי בתוך VM של Hyper-V — בלי אמולציית מעבד. האפליקציות רצות בחלונות ה-freeform של WSA דרך adb; אפליקציות x86 בלבד ואפליקציות עם אישור Play לא יעבדו (ל-builds מסוג core-lane אין שירותי Google).',
+  wsa_found_detail_x64: 'WSA מותקן. שימו לב: הפעלת WSA מדליקה את Hyper-V, מה שמנטרל את האצת AEHD של זמן הריצה המובנה — שני המנועים נשארים שמישים (QEMU נופל ל-WHPX/תוכנה).',
+  wsa_absent_title: 'Windows Subsystem for Android אינו מותקן',
+  wsa_absent_detail_arm64: 'Microsoft סיימה את התמיכה ב-WSA במרץ 2025; קיים המשך קהילתי (ללא קשר לחברת Microsoft וללא הערכתה): MustardChef/WSABuilds. עיינו בתנאים לפני התקנה. WSA מריץ אפליקציות באופן טבעי על ARM64 בלי אמולציית מעבד.',
+  wsa_link_action: 'למידע על WSA (המשך קהילתי)',
 };

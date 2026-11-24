@@ -56,4 +56,9 @@ module.exports = {
   report_section_diag: '== 诊断 ==',
   report_section_extra: '== 附加信息 ==',
   report_section_log: '== 运行时日志（末尾 300 行）==',
+
+  // ---- WSA 分支（docs/zapkstart/wsa-backend.md）----
+  wsa_diag_title: 'WSA 运行时诊断',
+  wsa_diag_hint: 'WSA 上的失败通常在传输层：开发人员设置里的 ADB 开关没开、调试授权弹窗没人点，或者子系统被关掉了。打开任意一个已装应用即可唤醒 WSA。core-lane 构建没有 Google 服务（依赖 GMS 的应用跑不了）。',
+  wsa_aehd_note: '在 x64 主机上，启用 WSA 会打开 Hyper-V，这会停用自带运行时的 AEHD 加速；两个引擎都仍然可用（QEMU 落到 WHPX 或软件模拟）。',
 };

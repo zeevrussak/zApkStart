@@ -25,5 +25,5 @@ module.exports = {
 
   // status() / usage / dataInfo
   not_connected: 'WSA עדיין לא מחובר. פתח כל אפליקציה מותקנת כדי להעיר את תת-המערכת',
-  managed_by_wsa: 'האחסון והתהליכים מנוהלים על ידי Windows Subsystem for Android; ZapkStart מריץ אותו רק דרך adb ואין בידינו את המספרים האלה',
+  managed_by_wsa: 'האחסון והתהליכים מנוהלים על ידי Windows Subsystem for Android; zApkStart מריץ אותו רק דרך adb ואין בידינו את המספרים האלה',
 };

@@ -75,6 +75,34 @@ const arch = require('../src/core/arch');
     assert(/=== 12/.test(src) && /=== 9/.test(src), '归一化映射应覆盖 9 与 12');
   });
 
+  await test('runtimePlan.wsaEngine：只读探测缓存，绝不影响 tier / engineDefault', async () => {
+    // 从未探测 → unknown
+    arch._setWsaProbeForTest(null);
+    assert(arch.runtimePlan('x64').wsaEngine === 'unknown');
+    assert(arch.runtimePlan('arm64').wsaEngine === 'unknown');
+    // 探测到已装 → available（两种宿主都只是「事实」字段）
+    arch._setWsaProbeForTest({ at: Date.now(), found: true, version: '2507.40000.4.0' });
+    assert(arch.runtimePlan('arm64').wsaEngine === 'available');
+    assert(arch.runtimePlan('x64').wsaEngine === 'available');
+    // 关键红线：WSA 装了也不能重新打开 QEMU 的 ARM64 能力门
+    const arm = arch.runtimePlan('arm64');
+    assert(arm.tier === 'shell-native' && arm.engineDefault === 'gate', 'tier/engineDefault 被 WSA 改动了');
+    assert(arm.imageAbi === 'x86_64' && arm.qemuExeName === 'qemu-system-x86_64.exe', '镜像 ABI / 引擎名被改动了');
+    // 探测到未装 → absent
+    arch._setWsaProbeForTest({ at: Date.now(), found: false, version: '' });
+    assert(arch.runtimePlan('arm64').wsaEngine === 'absent');
+    arch._setWsaProbeForTest(null);
+  });
+
+  await test('parseWsaPackageOutput：Get-AppxPackage 输出的三种夹具', async () => {
+    const hit = arch.parseWsaPackageOutput('2507.40000.4.0\r\n');
+    assert(hit.found === true && hit.version === '2507.40000.4.0', '带版本输出应解析为 found');
+    const miss = arch.parseWsaPackageOutput('  \r\n');
+    assert(miss.found === false && miss.version === '', '空输出 = 没装');
+    const err = arch.parseWsaPackageOutput(null);
+    assert(err.found === false, 'null（探测失败）也不该 found');
+  });
+
   console.log(`\n结果：${passed} 通过，${failed} 失败\n`);
   process.exit(failed ? 1 : 0);
 })();

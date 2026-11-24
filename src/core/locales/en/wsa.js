@@ -25,5 +25,5 @@ module.exports = {
 
   // status() / usage / dataInfo
   not_connected: 'WSA is not connected yet. Open any installed app to bring the subsystem up',
-  managed_by_wsa: 'Storage and processes are managed by the Windows Subsystem for Android; ZapkStart only drives it over adb and does not own these numbers',
+  managed_by_wsa: 'Storage and processes are managed by the Windows Subsystem for Android; zApkStart only drives it over adb and does not own these numbers',
 };

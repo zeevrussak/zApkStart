@@ -28,10 +28,12 @@ The fork adds three things the original does not have:
 | Host | Shell (this app) | Android engine | Notes |
 | --- | --- | --- | --- |
 | Windows 10/11 x64 | Native | Native (Google emulator/QEMU x64, AEHD or WHPX acceleration) | Full experience, same as upstream |
-| Windows 11 ARM64 | Native (ARM64 build) | **Not available natively.** Google publishes no ARM64 emulator; the x64 engine under Windows emulation is software-translated twice and is not usable for real apps | The app reports this on first run; an explicit opt-in can attempt the x64 engine anyway (one try, expectations stated) |
+| Windows 11 ARM64 | Native (ARM64 build) | **WSA (opt-in, detected)** when the Windows Subsystem for Android is installed — native ARM64 Android 13 in a Hyper-V VM; apps run in WSA's own freeform windows over adb (x86-only and Play-certified apps excluded; detect-only, never bundled). Without WSA: **not available natively** — Google publishes no ARM64 emulator, and the x64 engine under Windows emulation is software-translated twice and is not usable for real apps | The app reports this on first run; without WSA an explicit opt-in can attempt the x64 engine anyway (one try, expectations stated) |
 
-A genuinely native ARM64 Android engine is documented — not shipped — in
-[docs/zapkstart/arm64-research.md](docs/zapkstart/arm64-research.md).
+The WSA backend is specified in [docs/zapkstart/wsa-backend.md](docs/zapkstart/wsa-backend.md)
+(detect-only, explicit opt-in, adb-transport-only — the same backend shape covers
+redroid-in-WSL2-ARM64 later). A genuinely native ARM64 *bundled* engine remains documented — not
+shipped — in [docs/zapkstart/arm64-research.md](docs/zapkstart/arm64-research.md).
 
 ## Downloads
 

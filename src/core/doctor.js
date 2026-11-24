@@ -539,9 +539,17 @@ const RULES = [
 ];
 
 /** 把日志翻译成 {code,title,hint}，供 UI 展示与自动重试决策（titleKey/hintKey 指向 doctor 目录） */
-function diagnose(lines) {
+function diagnose(lines, { backend = '' } = {}) {
   const text = (Array.isArray(lines) ? lines.join('\n') : String(lines || '')).slice(-24000);
-  for (const r of RULES) {
+  // WSA / 外接 adb 设备（docs/zapkstart/wsa-backend.md）：加速、AVD 锁、快照、镜像、
+  // 端口、CPU 特性这些规则全部是「自带运行时」的故障语义，对用户管理的子系统只会
+  // 产出误导性建议 —— 整体跳过；通用规则（内存 / 磁盘 / DLL）保留。
+  const builtinOnly = new Set([
+    'ACCEL', 'AVD_LOCK', 'IMAGE', 'SNAPSHOT', 'PORT_BUSY', 'CPU_FEATURE',
+    'GPU_INIT', 'GPU_MODE', 'NON_ASCII',
+  ]);
+  const applicable = backend === 'wsa' ? RULES.filter((r) => !builtinOnly.has(r.code)) : RULES;
+  for (const r of applicable) {
     if (r.re.test(text)) {
       // ARM64 宿主：AEHD / 「虚拟机平台」的修复建议是做不到的（Google 不提供 ARM64
       // 引擎），按机器架构换成符合事实的提示，别把用户引去开永远没用的功能。
@@ -550,6 +558,17 @@ function diagnose(lines) {
       }
       return { code: r.code, title: t(`doctor.${r.titleKey}`), hint: t(`doctor.${r.hintKey}`) };
     }
+  }
+  // WSA 且通用规则也没命中：不套「UNKNOWN」，给 WSA 自己的结论 —— adb 开关 / 授权
+  // 是最常见的两档状态，外加 core-lane 构建没有 Google 服务的如实交代（GMS caveat）。
+  if (backend === 'wsa') {
+    return {
+      code: 'WSA',
+      title: t('doctor.wsa_diag_title'),
+      hint: machineArchSnapshot() === 'x64'
+        ? t('doctor.wsa_diag_hint') + ' ' + t('doctor.wsa_aehd_note')
+        : t('doctor.wsa_diag_hint'),
+    };
   }
   return {
     code: 'UNKNOWN',
@@ -576,7 +595,9 @@ function writeReport({ dataDir, profile, logLines = [], extra = {} }) {
   const dir = path.join(dataDir, 'logs');
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `diagnostic-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
-  const d = diagnose(logLines);
+  // backend 由调用方（engine.diagnostics 的 extra.backend）带来：WSA 模式下
+  // diagnose 走 WSA 分支，不给 AVD/加速这类不 applicable 的建议。
+  const d = diagnose(logLines, { backend: (extra && extra.backend) || '' });
   const body = [
     t('doctor.report_title', { product: brand.PRODUCT }),
     t('doctor.report_generated_at', { time: new Date().toLocaleString() }),

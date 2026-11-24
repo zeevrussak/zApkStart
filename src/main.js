@@ -13,7 +13,7 @@ const i18n = require('./core/i18n');
 // 进程级 t()：i18n.setActiveT() 在 whenReady 钉住语言，这里引用同一实现
 const t = i18n.t;
 const { Runtime } = require('./core/engine');
-const { Installer } = require('./core/installer');
+const { Installer, routeForApp } = require('./core/installer');
 const { Sharer } = require('./core/sharer');
 const { parseApk } = require('./core/apk');
 const { drawAppIcon } = require('./core/png');
@@ -723,6 +723,11 @@ async function toggleDisplayMode() {
 let deploying = false;
 async function autoDeploy({ force = false } = {}) {
   if (deploying || !store.getSettings().autoDeploy) return { ok: false, error: 'skipped' };
+  // WSA 模式：引擎是现成的子系统，没有 emulator/镜像可部署 —— 整条下载流程
+  // 没有意义，直接跳过（adb 真缺失时 ensure 会按 needs:'adb' 单独提示）。
+  if ((store.getSettings().engine && store.getSettings().engine.mode) === 'wsa') {
+    return { ok: false, error: 'skipped', wsa: true };
+  }
   // 下载失败冷却：以前只要 checkEnv() 还缺组件，每次启动 ApkStart 都会重新
   // 拉一遍 1.5GB 的运行时包，用户看到的就是「一直重复下载」。
   // 失败后记一个时间戳，30 分钟内不再自动重试；用户手动点「一键部署」时
@@ -1325,6 +1330,26 @@ async function runLaunch(pkg) {
 async function launchOne(pkg) {
   const t0 = Date.now();
   const mark = (s) => appLog(`launch ${pkg} ${s} +${Date.now() - t0}ms`);
+  /**
+   * 每应用路由（routeForApp，纯函数）：在任何 runtime.ensure() 之前先把「装在哪个
+   * 底座」与当前引擎模式对一遍。不一致就短路 —— 数据在另一台设备上，静默重装
+   * 会让用户以为数据共享了（v1 绝不做）；WSA 路由则走无窗口管线（launchOneWsa）。
+   */
+  const route = routeForApp(store.getApp(pkg), store.getSettings());
+  if (route === 'run-wsa') return launchOneWsa(pkg);
+  if (route.startsWith('mismatch:')) {
+    const appBackend = route.slice('mismatch:'.length);
+    const appRec = store.getApp(pkg);
+    const label = (appRec && appRec.label) || pkg;
+    appLog(`launch ${pkg} route mismatch (app backend=${appBackend}, engine mode=${store.getSettings().engine.mode})`);
+    send('toast', {
+      type: 'error',
+      message: t(appBackend === 'builtin'
+        ? 'main.route_mismatch_builtin_on_wsa'
+        : 'main.route_mismatch_wsa_on_builtin', { app: label }),
+    });
+    return { ok: false, error: 'backend-mismatch' };
+  }
   // 「提前接画面」的状态：进程一出现就接，但最终成败要等回调回来才知道。
   // 放在函数作用域，供后面的最终判定使用。
   let attachDoneEarly = false;
@@ -1564,6 +1589,55 @@ async function launchOne(pkg) {
  * 以前从 ApkStart 一启动就无条件开跑，哪怕一个 Android 应用都没打开。
  * 现在只在容器里真的有应用时才开，关掉最后一个窗口立刻停。
  */
+/**
+ * WSA 路由的启动（docs/zapkstart/wsa-backend.md）：runtime.ensure → 未装则从备份重装
+ * → startApp → 提示。窗口管线整条跳过 —— 画面在 WSA 自己的 freeform 窗口里，
+ * 没有 openAppWindow / preAttach / attach / 旋转门 / 指针钩子 / bounds 记忆这些事。
+ */
+async function launchOneWsa(pkg) {
+  const t0 = Date.now();
+  appLog(`launch (wsa) start ${pkg}`);
+  try {
+    const rt = await runtime.ensure({
+      onLog: (m) => { send('runtime:log', m); appLog(`  rt ${m}`); },
+    });
+    if (!rt.ok) {
+      send('toast', { type: 'error', message: rt.error || t('installer.runtime_unavailable') });
+      return { ok: false, error: rt.error || 'wsa-unavailable' };
+    }
+    const app = store.getApp(pkg);
+    // 应用可能还没装进子系统（WSA 数据重置 / 首次）：与 builtin 路径同一套
+    // isInstalled 校验 + 从 APK 备份重装，「点开就进」的体验保持一致。
+    if (app && app.apkPath && fs.existsSync(app.apkPath)) {
+      let installed = false;
+      try { installed = await rt.client.isInstalled(pkg); } catch (_) { /* 当作未安装 */ }
+      if (!installed) {
+        appLog(t('installer.reinstalling_from_backup'));
+        await rt.client.install(app.apkPath)
+          .catch((e) => appLog(t('installer.auto_install_failed', { reason: e.message })));
+      }
+    }
+    await rt.client.grantRuntimePermissions(pkg).catch(() => {});
+    await rt.client.startApp(app ? app.package : pkg, app ? app.activity : null, {});
+    runtime.touch();
+    if (app) {
+      store.upsertApp({
+        package: app.package,
+        launchCount: (app.launchCount || 0) + 1,
+        lastLaunchAt: Date.now(),
+      });
+    }
+    send('app:launched', { package: pkg, engine: 'wsa' });
+    send('toast', { type: 'ok', message: t('main.wsa_launch_ok', { app: app ? app.label : pkg, ms: Date.now() - t0 }) });
+    appLog(`launch (wsa) ok ${pkg} +${Date.now() - t0}ms`);
+    return { ok: true, embedded: false };
+  } catch (e) {
+    appLog(`launch (wsa) failed ${pkg}: ${e && e.message}`);
+    send('toast', { type: 'error', message: t('main.launch_failed_toast', { err: e.message }) });
+    return { ok: false, error: e.message };
+  }
+}
+
 function onContainerActive(on) {
   if (on) {
     sharer?.start(8000);
@@ -1723,8 +1797,13 @@ function registerIpc() {
   ipcMain.handle('app:stop', async (_e, pkg, opts = {}) => stopApp(pkg, opts));
 
   ipcMain.handle('app:uninstall', async (_e, pkg) => {
-    await installer.uninstall(pkg);
-    return { ok: true };
+    // 卸载按 app.backend 路由（installer.uninstall）：应用装在另一台设备上时只清
+    // 本地元数据，不为一键卸载拉起另一台 VM/子系统 —— 如实告知用户远端的包还在。
+    const r = await installer.uninstall(pkg);
+    if (r && r.remoteOnly) {
+      send('toast', { type: 'info', message: t('main.uninstall_remote_only') });
+    }
+    return { ok: true, remoteOnly: !!(r && r.remoteOnly) };
   });
 
   ipcMain.handle('app:shortcut', async (_e, pkg) => {
@@ -1802,6 +1881,13 @@ function registerIpc() {
     const before = store.getSettings();
     const next = store.saveSettings(patch);
     if (patch && patch.autoStart !== undefined) applyAutoStart();
+    // 引擎模式切换（Bundled ⇄ WSA，用户显式选择）：丢掉旧底座实例与端口假设，
+    // 下一次 ensure 按 mode 重新创建（注册表会再核一次探测）。
+    if (patch && patch.engine && patch.engine.mode !== undefined
+      && patch.engine.mode !== (before.engine && before.engine.mode)) {
+      runtime.resetBackend();
+      runtime.emuSerial = 'emulator-5554';
+    }
     // 界面语言变了：把新的语言状态推给所有渲染层，并重建托盘（原生菜单不会热重排）
     if (patch && patch.ui && patch.ui.locale !== undefined && patch.ui.locale !== before.ui?.locale) {
       broadcastI18n();
@@ -1903,8 +1989,29 @@ function registerIpc() {
     try { accel = await runtime.provisioner.emulatorAccel(); } catch (_) { /* 运行时还没部署 */ }
     const hw = await preflight.collect({ accel });
     const edition = store.STORE_BUILD ? 'store' : 'installer';
-    const report = preflight.evaluate({ hw, settings: store.getSettings(), edition });
+    const report = preflight.evaluate({ hw, settings: store.getSettings(), edition, wsa: hw.wsaEngine || 'unknown' });
     return { ok: true, hw, report, edition };
+  });
+
+  /**
+   * WSA 指南链接（preflight/设置卡片的「了解 WSA」按钮）：只在用户显式点击时打开，
+   * 打开的是固定 URL（不接收渲染层传参），措辞与合规约束见 docs/zapkstart/wsa-backend.md。
+   */
+  ipcMain.handle('wsa:openGuide', async () => {
+    const url = require('./core/preflight').WSA_BUILDS_URL;
+    await shell.openExternal(url);
+    return { ok: true };
+  });
+
+  /** WSA 探测（设置页据此显示/隐藏引擎分段控件；arch.detectWsa 自带 60 秒 TTL 缓存） */
+  ipcMain.handle('wsa:detect', async () => {
+    const arch = require('./core/arch');
+    try {
+      const r = await arch.detectWsa();
+      return { ok: true, found: !!r.found, version: r.version || '' };
+    } catch (e) {
+      return { ok: false, found: false, error: e.message };
+    }
   });
 
   /**
@@ -3283,7 +3390,10 @@ if (!gotLock) {
     // 预热：像 WSA / 应用宝电脑版那样把安卓环境常驻。
     // 打开 ApkStart 时就在后台把它引导好（窗口全程隐藏），之后点应用只剩一次 am start。
     // 只有「已经装过应用 + 有可用运行时」才预热，避免第一次使用/纯管理场景白占内存。
-    const prewarmEnabled = store.getSettings().engine.prewarm !== false;
+    // WSA 模式：v1 不在启动时自动唤醒用户的子系统（VM 是用户管理的，擅自拉起
+    // 一台 Hyper-V 机器比预热一台 qemu 重得多）—— 点应用时 ensure 自会连。
+    const prewarmEnabled = store.getSettings().engine.prewarm !== false
+      && store.getSettings().engine.mode !== 'wsa';
     if (prewarmEnabled && !args.launch && store.getApps().length > 0) {
       // 1.2 秒就够窗口画完第一帧了。以前等 4 秒，用户这时已经点了应用，
       // 结果「点开」和「预热」抢同一个 AVD 锁，反而更慢。

@@ -75,4 +75,12 @@ module.exports = {
   summary_bad: '{count} issue(s) must be fixed first ({titles})',
   summary_warn: '{count} item(s) would benefit from tuning ({titles})',
   summary_good: 'This machine can run hardware acceleration directly and the configuration is already optimal',
+
+  // ---- WSA cards (docs/zapkstart/wsa-backend.md wording rules: neutral, explicit click) ----
+  wsa_found_title: 'WSA detected — the practical way to run apps natively on this machine',
+  wsa_found_detail_arm64: 'Native ARM64 Android 13 in a Hyper-V VM — no CPU emulation. Apps run in WSA\'s own freeform windows over adb; x86-only and Play-certified apps will not work (core-lane builds have no Google services).',
+  wsa_found_detail_x64: 'WSA is installed. Note: enabling WSA turns on Hyper-V, which disables AEHD acceleration for the bundled runtime — both engines remain usable (QEMU falls back to WHPX/software).',
+  wsa_absent_title: 'Windows Subsystem for Android is not installed',
+  wsa_absent_detail_arm64: 'Microsoft ended WSA support in March 2025; a community continuation exists (not affiliated with or endorsed by Microsoft): MustardChef/WSABuilds. Review its terms before installing. WSA runs apps natively on ARM64 without CPU emulation.',
+  wsa_link_action: 'Learn about WSA (community continuation)',
 };

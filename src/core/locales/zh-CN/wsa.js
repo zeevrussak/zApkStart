@@ -25,5 +25,5 @@ module.exports = {
 
   // status() / usage / dataInfo
   not_connected: 'WSA 尚未连接。打开任意一个已安装的应用即可唤醒子系统',
-  managed_by_wsa: '存储与进程由 Windows Subsystem for Android 管理，ZapkStart 只经 adb 驱动它，不掌握这些数字',
+  managed_by_wsa: '存储与进程由 Windows Subsystem for Android 管理，zApkStart 只经 adb 驱动它，不掌握这些数字',
 };

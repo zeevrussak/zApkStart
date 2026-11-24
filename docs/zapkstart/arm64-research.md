@@ -1,9 +1,17 @@
 # Native ARM64 Android engine on Windows — research notes
 
-Status (2026-11-23): **research only — nothing in this document ships in the product.**
+Status (2026-11-24): **research only — nothing in this document ships in the product.**
 zApkStart on ARM64 hosts runs the x64 engine only behind the explicit "try anyway" opt-in
 (see `docs/zapkstart/design.md` §Technical Plan). This note records what a genuinely native
 ARM64 path would require, and the go/no-go gates before any engineering starts.
+
+**Re-scope (2026-11-24, `docs/zapkstart/wsa-backend.md`):** WSA is now the *recommended*
+no-emulation ARM64 answer — an opt-in, detect-only backend (`wsa`, adb transport to
+`127.0.0.1:5855`) drives the community-continued Windows Subsystem for Android as a native
+ARM64 Android 13 subsystem. The mainline-QEMU gates below stay, re-scoped as the
+**fully-open-source alternative**: redroid-in-WSL2-ARM64 is documented alongside as the second
+open route (same adb-endpoint backend, near-zero backend-code delta, expert setup, no Microsoft
+dependency). Nothing here reopens the QEMU gates in the product (`arch.js tier` untouched).
 
 ## Why the obvious paths fail today
 

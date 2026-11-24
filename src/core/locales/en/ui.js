@@ -789,7 +789,7 @@ module.exports = {
   group_title_runtime_adv: 'Runtime',
   label_runtime_adv: 'Runtime',
   runtime_engine_label: 'zApkStart bundled runtime (QEMU + Android 14, standalone)',
-  sub_runtime_only: 'zApkStart only runs its own runtime: adb / emulator / system images are downloaded and managed by itself, without probing, adopting or depending on any emulator installed on your machine (MuMu / LDPlayer / BlueStacks / WSA are never used). Changing machines, other people\'s emulators or emulator upgrades thus never affect it.',
+  sub_runtime_only: "Apps always run in the engine selected above (the bundled runtime by default). The bundled runtime is fully self-managed: adb / emulator / system images are downloaded and managed by zApkStart itself — third-party emulators (MuMu / LDPlayer / BlueStacks / FydeOS) are never probed or adopted. When you explicitly switch to WSA, apps run in WSA's own windows and are driven only over adb; its VM and data stay yours.",
   label_adb_path: 'adb path',
   adb_path_placeholder: 'Leave empty to search PATH / Android SDK automatically',
   label_device_addr: 'Device address',
@@ -913,4 +913,13 @@ module.exports = {
   splash_firstrun_bundled_2: 'Extract the system image into the user directory (about 1 minute, one time only)',
   splash_firstrun_bundled_3: 'Prepare hardware acceleration and the Chinese IME',
   splash_firstrun_bundled_4: 'Then double-click an APK or desktop icon to open apps instantly',
+
+  // ---- engine backend selector (WSA, docs/zapkstart/wsa-backend.md) ----
+  opt_engine_builtin: 'Bundled runtime (QEMU + Android 14)',
+  opt_engine_wsa: 'Windows Subsystem for Android (WSA)',
+  sub_engine_switch_warn: 'Switching engines does not move installed apps — each app stays on the engine it was installed on. On x64, WSA enables Hyper-V which disables AEHD acceleration for the bundled runtime (both engines remain usable).',
+  sub_runtime_mode_wsa: `WSA mode: apps run in WSA's own freeform windows on a native ARM64 Android subsystem, driven only over adb. The VM stays user-managed — no snapshots, no panel rotation, no keymap hooks (those are bundled-runtime features). x86-only apps and Play certification are not guaranteed: core-lane builds have no Google services.`,
+  engine_switch_confirm: 'Switch the engine? Installed apps do not move: each app keeps launching on the engine it was installed on. Switch now?',
+  engine_switch_done_title: 'Engine switched',
+  engine_switch_done_body: 'The new engine is used from the next app launch on. Apps installed on the other engine keep launching there.',
 };

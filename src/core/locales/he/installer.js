@@ -46,4 +46,8 @@ module.exports = {
   launch_retry: 'האפליקציה יצאה לאחר ההפעלה (ניסיון {attempt}); מנסה שוב אוטומטית…',
   reset_and_retry: 'האפליקציה ממשיכה לצאת; מאפס את נתוני האפליקציה ומנסה שוב…',
   app_unstable: 'האפליקציה יצאה מיד לאחר ההפעלה; ניסיונות חוזרים אוטומטיים ואיפוס נתוני האפליקציה לא עזרו',
+
+  // ---- כיוון ABI ב-WSA (docs/zapkstart/wsa-backend.md) ----
+  wsa_x86_only: '{label} מכיל ספריות native ל-x86 בלבד, אבל המכשיר הזה מריץ Android מבוסס ARM (WSA). חפש גרסה של האפליקציה התואמת ל-ARM; את ה-APK הזה אי אפשר להתקין כאן.',
+  wsa_arm_translation: '{label} דורש build של WSA עם תמיכה ב-ARM (הווריאנטים מסוג ARM-enabled של WSABuilds). ה-build הזה של WSA אינו מצליח להריץ את הספריות ה-native של האפליקציה.',
 };

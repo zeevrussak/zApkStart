@@ -46,4 +46,8 @@ module.exports = {
   launch_retry: 'The app exited after launch (attempt {attempt}); retrying automatically…',
   reset_and_retry: 'The app keeps exiting; resetting app data and retrying…',
   app_unstable: 'The app exited immediately after launch; automatic retries and an app-data reset did not help',
+
+  // ---- WSA ABI direction (docs/zapkstart/wsa-backend.md) ----
+  wsa_x86_only: '{label} ships x86-only native libraries, but this device runs ARM Android (WSA). Look for an ARM-compatible build of the app; this APK cannot be installed here.',
+  wsa_arm_translation: '{label} needs an ARM-capable WSA build (the ARM-enabled variants of WSABuilds). This WSA build cannot run the app\'s native libraries.',
 };

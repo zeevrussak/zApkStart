@@ -39,6 +39,48 @@ async function runningHasArm(client) {
 }
 
 /**
+ * ABI 方向判定（纯函数，docs/zapkstart/wsa-backend.md 的「方向反转」）。
+ *
+ * @param {string} engine  'wsa' | 其它（一律按 builtin 的现有阶梯）
+ * @param {object} meta    parseApk 的元数据（用 meta.abis）
+ * @param {string|null} abilist 当前设备的 ro.product.cpu.abilist 原文；null/空 = 探测不到
+ * @returns {'native'|'compat'|'fail:x86-only'|'fail:arm-translation'}
+ *   native            直接装（无需任何镜像/转译处理）
+ *   compat            builtin 专属：ARM-only 应用且当前运行时确认无翻译层 → 切兼容镜像
+ *   fail:x86-only     wsa 且该设备跑不了 x86-only 包 → 上层按 installer.wsa_x86_only 抛错
+ *   fail:arm-translation  wsa 且该构建连 ARM 都跑不了（罕见的非 ARM 构建）→ 如实报错
+ *
+ * WSA 的方向反转要点：**兼容镜像机制永不启动**（switchToCompat/ensureCompatImage
+ * 在 wsa 模式下是死代码路径）—— WSA 是整机原生 ARM64 安卓，没有第二套镜像可切；
+ * x86-only 包要么靠构建自带的转译（abilist 里有 x86）直接装，要么按「这台设备跑
+ * ARM 安卓」如实解释失败，绝不虚许诺。
+ */
+function abiDirectionFor(engine, meta, abilist) {
+  const known = typeof abilist === 'string' && !!abilist.trim();
+  const deviceArm = known ? /arm/i.test(abilist) : true;  // 探测不到时按 WSA 本命（ARM 设备）保守判定
+  const deviceX86 = known ? /x86/i.test(abilist) : false;
+  if (engine === 'wsa') {
+    if (!meta.abis || !meta.abis.length) return 'native';  // 纯字节码应用：无 ABI 需求
+    const appArm = meta.abis.some((a) => /arm/i.test(a));
+    const appX86 = meta.abis.some((a) => /x86/i.test(a));
+    if (appArm) return deviceArm ? 'native' : 'fail:arm-translation';
+    if (appX86) return deviceX86 ? 'native' : 'fail:x86-only';
+    return 'native';
+  }
+  // builtin：现有阶梯原样 —— 只有 ARM-only 且探测确认无翻译层才切镜像；
+  // 探测不到（null/空）绝不挡安装，交给安装失败后的重试兜底（与旧行为一致）。
+  if (isArmOnly(meta)) return known && !deviceArm ? 'compat' : 'native';
+  return 'native';
+}
+
+/** WSA 的 ABI 判定失败 → 结构化错误（带 code 与文案 key，上层不重试、直接呈现） */
+function wsaAbiError(key, meta, code) {
+  const err = new Error(t(key, { label: (meta && meta.label) || '' }));
+  err.code = code;
+  return err;
+}
+
+/**
  * 拆分安装包（.apks / .xapk）：解出里面的分片 APK 到纯 ASCII 临时目录。
  * 用文件版 ZIP 读取器 + 流式落盘：拆分包动辄 2GB+，整包读内存会失败。
  * 返回 { meta, files, cleanup }；meta 来自带 AndroidManifest 的 base APK。
@@ -79,6 +121,25 @@ function accentOf(pkg) {
   for (let i = 0; i < pkg.length; i++) h = (h * 31 + pkg.charCodeAt(i)) >>> 0;
   const hue = h % 360;
   return `hsl(${hue} 62% 52%)`;
+}
+
+/**
+ * 每应用路由（纯函数，docs/zapkstart/wsa-backend.md）：这个应用该在哪台「设备」上启动。
+ *
+ * 返回：
+ *   'run-builtin'            app.backend（缺省 builtin）与引擎模式一致且是 builtin
+ *   'run-wsa'                一致且是 wsa
+ *   `mismatch:<appBackend>`  不一致 —— 上层短路成错误提示，**绝不**静默重装
+ *                            （两边数据各自独立，迁移不是 v1 承诺的事）
+ *
+ * 放在 installer.js 而不是 main.js：本模块是纯 Node 可 require 的编排层
+ * （autodebug 同款分层），路由真值表才能进单测。
+ */
+function routeForApp(app, settings) {
+  const appBackend = (app && app.backend) || 'builtin';
+  const engineMode = (settings && settings.engine && settings.engine.mode) || 'builtin';
+  if (appBackend === engineMode) return engineMode === 'wsa' ? 'run-wsa' : 'run-builtin';
+  return `mismatch:${appBackend}`;
 }
 
 class Installer {
@@ -224,10 +285,18 @@ class Installer {
         throw err;
       }
 
-      // 零配置 ARM 兼容：先看「当前这台运行时」有没有翻译能力，而不是看镜像文件在不在磁盘上。
-      // 复用了旧版本/旧快照拉起、没开翻译层的模拟器时，playImageInfo().ok 也是 true，
-      // 光靠它会漏掉，于是装到一半才报 NO_MATCHING_ABIS。这里提前切一次，省掉那段白等。
-      if (isArmOnly(meta) && await runningHasArm(rt.client) === false) {
+      // ABI 方向统一判定（abiDirectionFor，docs/zapkstart/wsa-backend.md）：
+      //   builtin：零配置 ARM 兼容 —— 只有「ARM-only 且当前这台运行时确认无翻译层」才切镜像
+      //   （复用旧版本/旧快照拉起、没开翻译层的模拟器时，playImageInfo().ok 也是 true，
+      //    光靠它会漏掉，于是装到一半才报 NO_MATCHING_ABIS。提前切一次，省掉那段白等）。
+      //   wsa：兼容镜像机制整条不适用；x86-only（且构建无 x86 转译）按「ARM 设备」如实报错。
+      const deviceAbilist = await rt.client.shell('getprop ro.product.cpu.abilist', { timeout: 6000 }).catch(() => '');
+      const direction = abiDirectionFor(rt.engine, meta, deviceAbilist || null);
+      if (direction === 'fail:x86-only') throw wsaAbiError('installer.wsa_x86_only', meta, 'WSA_X86_ONLY');
+      if (direction === 'fail:arm-translation') {
+        throw wsaAbiError('installer.wsa_arm_translation', meta, 'WSA_NO_ARM_TRANSLATION');
+      }
+      if (isArmOnly(meta) && direction === 'compat') {
         onProgress({ stage: 'runtime', message: t('installer.arm_switching') });
         await this.ensureCompatImage(onProgress);
         rt = await this.switchToCompat(onProgress);
@@ -242,8 +311,11 @@ class Installer {
   async finishInstall(rt, meta, filePath, bundle, onProgress) {
     const client = rt.client;
     const existing = store.getApp(meta.package);
-    // 装完之后旧 quickboot 快照里的磁盘状态就过期了，留着会导致「装好的应用重启后又不见了」
-    try { this.runtime.emulator?.invalidateSnapshot(); } catch (_) { /* ignore */ }
+    // 装完之后旧 quickboot 快照里的磁盘状态就过期了，留着会导致「装好的应用重启后又不见了」。
+    // WSA 没有我们的快照这回事（VM 归 WSA 管），跳过。
+    if (rt.engine !== 'wsa') {
+      try { this.runtime.emulator?.invalidateSnapshot(); } catch (_) { /* ignore */ }
+    }
     onProgress({ stage: 'install', message: existing ? t('installer.updating_app') : t('installer.installing_app') });
     try {
       if (bundle) await client.installMultiple(bundle.files);
@@ -255,6 +327,15 @@ class Installer {
       // 「正在自动切换兼容镜像后重试」，于是出现「红色安装失败 + 文案说正在重试」的怪事。
       // 现在无条件切一次：错误本身就是重试理由。
       if (e.code === 'NO_MATCHING_ABIS') {
+        // WSA：方向在安装前已按 abiDirectionFor 判过，走到这里说明这台 WSA 构建的
+        // 转译能力与 APK 仍不匹配。没有「第二套镜像」可切 —— 兼容镜像机制在 wsa
+        // 模式下整条禁用，如实给出 ARM 设备解释，绝不虚许诺「切换后重试」。
+        if (this.runtime.backendId === 'wsa') {
+          const abilist2 = await rt.client.shell('getprop ro.product.cpu.abilist', { timeout: 6000 }).catch(() => '');
+          const d2 = abiDirectionFor('wsa', meta, abilist2 || null);
+          if (d2 === 'fail:x86-only') throw wsaAbiError('installer.wsa_x86_only', meta, 'WSA_X86_ONLY');
+          throw wsaAbiError('installer.wsa_arm_translation', meta, 'WSA_NO_ARM_TRANSLATION');
+        }
         onProgress({ stage: 'runtime', message: t('installer.arm_switching_retry') });
         await this.ensureCompatImage(onProgress);
         const rt2 = await this.switchToCompat(onProgress);
@@ -340,6 +421,10 @@ class Installer {
       // 决定模拟器物理面板用哪个方向，方向一致画面才能铺满窗口不留黑边。
       // 用户手动设过 orientationOverride 时以用户的为准，这里只是「默认值」。
       orientation: meta.orientation || (existing ? existing.orientation || null : null),
+      // 装在哪个底座：读时缺省当 builtin（老 apps.json 记录零迁移）。WSA 模式下装的
+      // 记 'wsa'，之后 --launch / 快捷方式 / 卸载都按它路由（见 routeForApp）。
+      // builtin 时故意写 undefined（JSON 里不落字段），保持老记录的形状。
+      backend: rt.engine === 'wsa' ? 'wsa' : undefined,
       pinned: existing ? !!existing.pinned : false,
       // 重新装过 = 权限表可能被重置，清掉「已授过」缓存，下次启动重新核一遍
       permGranted: false,
@@ -370,8 +455,10 @@ class Installer {
     }
     client.batteryOptimizeOff(meta.package).catch(() => {});
     // 装应用时作废了旧快照，这里补排一次：空闲时把「已装好新应用」的状态存下来，
-    // 否则下次开机要重新冷启动（20 多秒）。
-    try { this.runtime.scheduleSnapshotSave?.(12000); } catch (_) { /* ignore */ }
+    // 否则下次开机要重新冷启动（20 多秒）。WSA 没有我们的快照，跳过。
+    if (rt.engine !== 'wsa') {
+      try { this.runtime.scheduleSnapshotSave?.(12000); } catch (_) { /* ignore */ }
+    }
 
     onProgress({ stage: 'done', message: t('installer.install_done', { label: app.label }), app });
     return { app, warnings, engine: rt.engine };
@@ -463,10 +550,8 @@ class Installer {
     return made;
   }
 
-  async uninstall(pkg, { removeShortcut: rm = true } = {}) {
-    const app = store.getApp(pkg);
-    const rt = await this.runtime.ensure();
-    if (rt.ok) await rt.client.uninstall(pkg).catch(() => {});
+  /** 卸载的本地清理（快捷方式/图标/APK 备份/记录），builtin 与 wsa 两条路径共用 */
+  _removeLocalArtifacts(app, rm) {
     if (app && rm) {
       removeShortcut(app.shortcutPath);
       removeShortcut(app.startMenuPath);
@@ -476,8 +561,27 @@ class Installer {
       try { if (app.icoPath && fs.existsSync(app.icoPath)) fs.unlinkSync(app.icoPath); } catch (_) {}
       try { if (app.apkPath && fs.existsSync(app.apkPath)) fs.unlinkSync(app.apkPath); } catch (_) {}
     }
-    store.removeApp(pkg);
-    return true;
+    store.removeApp(app ? app.package : '');
+  }
+
+  /**
+   * 卸载按 app.backend 路由（docs/zapkstart/wsa-backend.md）：
+   *   - 一致（builtin 应用 + builtin 模式 / wsa 应用 + wsa 模式）：ensure 后走 adb 卸载；
+   *   - 不一致：**不**为此拉起另一台设备（等于为一键卸载开一整台 VM/子系统），
+   *     只清本地元数据，远端的包留给对应引擎的卸载路径。返回 remoteOnly 让上层提示。
+   */
+  async uninstall(pkg, { removeShortcut: rm = true } = {}) {
+    const app = store.getApp(pkg);
+    const appBackend = (app && app.backend) || 'builtin';
+    const engineMode = (store.getSettings().engine && store.getSettings().engine.mode) || 'builtin';
+    if (appBackend !== engineMode) {
+      this._removeLocalArtifacts(app, rm);
+      return { ok: true, remoteOnly: true };
+    }
+    const rt = await this.runtime.ensure();
+    if (rt.ok) await rt.client.uninstall(pkg).catch(() => {});
+    this._removeLocalArtifacts(app, rm);
+    return { ok: true, remoteOnly: false };
   }
 
   async launch(pkg, { onLog = () => {}, beforeStart = null, onMark = () => {}, onAppUp = null } = {}) {
@@ -493,8 +597,10 @@ class Installer {
       err.needsSetup = rt.needsSetup;
       throw err;
     }
-    // 分辨率要在拉起应用之前改，避免 wm size 触发配置变更把刚启动的 Activity 重建
-    if (beforeStart) {
+    // 分辨率要在拉起应用之前改，避免 wm size 触发配置变更把刚启动的 Activity 重建。
+    // WSA：显示手术整条跳过 —— wm size/density/rotation 改的是子系统**全局**显示，
+    // 用户自己的 WSA 窗口也共用它（docs/zapkstart/wsa-backend.md Non-Goals）。
+    if (beforeStart && rt.engine !== 'wsa') {
       const replaced = await beforeStart(rt).catch((e) => {
         onLog(t('installer.display_adapt_skipped', { reason: e.message }));
         return null;
@@ -506,7 +612,10 @@ class Installer {
     // 清掉旧版本可能残留在 /data 里的 wm size / density 覆盖与自动旋转设置。
     // 这些覆盖是持久化的，不清理的话每次启动画面都会被转 90° 躺倒、留黑边、
     // 鼠标点击也无法对应（用户反馈的「旋转黑边 / 未填满 / 点不动同意」）。
-    await rt.client.resetDisplayOverrides(!!(store.getSettings().display || {}).landscape).catch(() => {});
+    // WSA 同理跳过（上面的全局显示理由 + 覆盖会在 WSA 的窗口间互相污染）。
+    if (rt.engine !== 'wsa') {
+      await rt.client.resetDisplayOverrides(!!(store.getSettings().display || {}).landscape).catch(() => {});
+    }
     // 冷启动时顺手做过网络体检：没网就直接说清楚。否则用户只会看到「这个应用一直黑屏」，
     // 完全想不到是虚拟机没网（联网页面拿不到数据就是一块黑底）。
     // 关键修复：Wi-Fi 关联往往比 sys.boot_completed 晚几十秒，红果一进去就拉首页数据，
@@ -567,8 +676,11 @@ class Installer {
       try { installed = await rt.client.isInstalled(pkg); } catch (_) { /* 当作未安装，走重装 */ }
       if (!installed) {
         onLog(t('installer.reinstalling_from_backup'));
-        // 重装前作废快照：否则旧快照的 packages.xml 仍说「已装」，下次又不对
-        try { this.runtime.emulator?.invalidateSnapshot(); } catch (_) { /* ignore */ }
+        // 重装前作废快照：否则旧快照的 packages.xml 仍说「已装」，下次又不对。
+        // WSA 没有我们的快照，跳过。
+        if (rt.engine !== 'wsa') {
+          try { this.runtime.emulator?.invalidateSnapshot(); } catch (_) { /* ignore */ }
+        }
         await rt.client.install(app.apkPath)
           .catch((e) => onLog(t('installer.auto_install_failed', { reason: e.message })));
       }
@@ -636,7 +748,8 @@ class Installer {
         // Activity 起来后立刻把方向锁死。放在这里是因为应用启动过程本身会触发
         // 配置变更（Activity 重建），启动前设的 user-rotation 可能被系统重置回 0 ——
         // 一旦回 0，横屏面板上的画面就会躺倒 90°（用户看到的就是「转不正」）。
-        if (started) {
+        // WSA：方向锁是 AVD 面板语义，改的是子系统全局显示，跳过。
+        if (started && rt.engine !== 'wsa') {
           // eslint-disable-next-line no-await-in-loop
           await rt.client.setOrientation(!!(store.getSettings().display || {}).landscape).catch(() => {});
         }
@@ -666,6 +779,16 @@ class Installer {
       }
     } catch (e) {
       if (e.code === 'APP_CRASHED' && e.crash) {
+        // WSA：崩溃分类按底座改口径（docs/zapkstart/wsa-backend.md wording 规则）。
+        // 反模拟检测在 WSA 上一样可能命中（设备完整性校验不认虚拟机），但这里
+        // 没有「翻译层/兼容镜像」的概念 —— 兼容镜像机制整条禁用，反模拟文案换成
+        // WSA 的实情版，然后如实抛出。
+        if (rt.engine === 'wsa') {
+          if (e.errCode === 'LAUNCH_ANTI_EMULATOR') {
+            e.message = t('adb.launch_anti_emulator_wsa', e.params || { pkg: app ? app.label : pkg });
+          }
+          throw e;
+        }
         // 崩溃日志明确指向 ARM 翻译层。关键：0.6.3 只有一份带翻译层的通用镜像，
         // playImageInfo().ok 恒为 true —— 不能再拿 !ok 当「要不要切镜像」的开关，
         // 那样这个分支永远进不去，手册承诺的「自动重试」就成了死代码。
@@ -709,4 +832,4 @@ class Installer {
   }
 }
 
-module.exports = { Installer, accentOf, parseBundle };
+module.exports = { Installer, accentOf, parseBundle, routeForApp, abiDirectionFor };

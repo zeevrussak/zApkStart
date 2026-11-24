@@ -68,6 +68,17 @@ class Sharer {
       if (!(await client.isOnline())) throw new Error(t('sharer.not_connected'));
       await this.ensureDirs(onLog);
       const state = this.loadState();
+      /**
+       * 共享状态的键带 serial 前缀（<serial>:<rel>，docs/zapkstart/wsa-backend.md）：
+       * QEMU（emulator-5554）与 WSA（127.0.0.1:5855）是两台不同的「设备」，
+       * mtime/size 状态互不通用 —— 混用会让一台的同步状态骗过另一台，表现为
+       * 「文件明明变了却不同步」。升级后第一次同步把无前缀的旧键丢弃一次：
+       * 两侧按全新文件重新比对，最坏是多推/多拉一遍，正确性无损。
+       */
+      for (const k of Object.keys(state)) {
+        if (!String(k).includes(':')) delete state[k];
+      }
+      const scopeKey = (rel) => `${client.serial}:${rel}`;
 
       // --- 本机 → 设备 ---
       // 状态里同时记「本机 mtime」和「设备 mtime」两个值。
@@ -83,14 +94,14 @@ class Sharer {
 
       const localFiles = walk(this.localDir);
       for (const f of localFiles) {
-        const prev = stateOf(state[f.rel]);
+        const prev = stateOf(state[scopeKey(f.rel)]);
         const changed = !prev || prev.size !== f.size || Math.abs(prev.lmtime - f.mtime) > 1500;
         if (!changed) continue;
         const remote = `${this.remoteDir}/${f.rel}`;
         try {
           await client.shell(`mkdir -p "$(dirname '${remote}')"`);
           await client.push(f.abs, remote);
-          state[f.rel] = { size: f.size, lmtime: f.mtime, rmtime: 0, dir: 'up', at: Date.now() };
+          state[scopeKey(f.rel)] = { size: f.size, lmtime: f.mtime, rmtime: 0, dir: 'up', at: Date.now() };
           result.pushed++;
         } catch (e) {
           result.errors.push(`↑ ${f.rel}: ${e.message}`);
@@ -112,7 +123,7 @@ class Sharer {
       for (const r of remoteList) {
         // 超大文件（视频/游戏数据包）不往回拉：本地目录不该成为设备缓存的下水道
         if (r.size > MAX_FILE) continue;
-        const prev = stateOf(state[r.rel]);
+        const prev = stateOf(state[scopeKey(r.rel)]);
         const sizeSame = !!prev && prev.size === r.size;
         const rmtimeSame = !!(prev && prev.rmtime && r.mtime)
           && Math.abs(prev.rmtime - r.mtime) <= 1500;
@@ -120,7 +131,7 @@ class Sharer {
           // 大小一致，且要么设备时间没变、要么这个文件就是我们刚推上去的：
           // 只把设备时间记下来收工，绝不重复下载
           if (r.mtime && prev.rmtime !== r.mtime) {
-            state[r.rel] = { ...prev, rmtime: r.mtime };
+            state[scopeKey(r.rel)] = { ...prev, rmtime: r.mtime };
           }
           continue;
         }
@@ -130,7 +141,7 @@ class Sharer {
           fs.mkdirSync(path.dirname(local), { recursive: true });
           await client.pull(`${this.remoteDir}/${r.rel}`, local);
           const st = fs.statSync(local);
-          state[r.rel] = { size: st.size, lmtime: st.mtimeMs, rmtime: r.mtime || 0, dir: 'down', at: Date.now() };
+          state[scopeKey(r.rel)] = { size: st.size, lmtime: st.mtimeMs, rmtime: r.mtime || 0, dir: 'down', at: Date.now() };
           result.pulled++;
         } catch (e) {
           result.errors.push(`↓ ${r.rel}: ${e.message}`);

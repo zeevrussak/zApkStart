@@ -56,4 +56,9 @@ module.exports = {
   report_section_diag: '== אבחון ==',
   report_section_extra: '== מידע נוסף ==',
   report_section_log: '== יומן סביבת הריצה (300 שורות אחרונות) ==',
+
+  // ---- ענף WSA (docs/zapkstart/wsa-backend.md) ----
+  wsa_diag_title: 'אבחון זמן ריצה של WSA',
+  wsa_diag_hint: 'ב-WSA, כשלים הם בדרך כלל בשכבת התעבורה: מתג ה-ADB בהגדרות המפתחים כבוי, דו-שיח אישור הדיבוג לא נענה, או שתת-המערכת נסגרה. פתיחת כל אפליקציה מותקנת מעירה את WSA. ל-builds מסוג core-lane אין שירותי Google (אפליקציות התלויות ב-GMS לא ירוצו).',
+  wsa_aehd_note: 'במחשבי x64, הפעלת WSA מדליקה את Hyper-V שמנטרל את האצת AEHD של זמן הריצה המובנה; שני המנועים נשארים שמישים (QEMU נופל ל-WHPX או לאמולציית תוכנה).',
 };

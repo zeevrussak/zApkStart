@@ -46,4 +46,7 @@ module.exports = {
   app_still_loading: '(האפליקציה עדיין בטעינה)',
   ime_apk_missing: 'קובץ ה-APK של שיטת הקלט חסר',
   ime_not_registered: 'חבילת שיטת הקלט לא נרשמה',
+
+  // ניסוח ה-anti-emulator בגרסת WSA (docs/zapkstart/wsa-backend.md wording rules)
+  launch_anti_emulator_wsa: '{pkg} מסרב לסביבות מדומות/וירטואליות ויצא מעצמו. ב-WSA, בדיקות שלמות המכשיר (Play Integrity / SafetyNet) עשויות עדיין לחסום אותו — זו מגבלה של האפליקציה, לא תקלה; ל-builds מסוג core-lane של WSA אין גם שירותי Google.',
 };

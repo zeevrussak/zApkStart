@@ -227,7 +227,7 @@ jobs:
         run: |
           npx electron-builder --win --dir --arm64 --publish never
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $exe = Get-ChildItem "dist/win-unpacked*/zApkStart.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $exe = Get-ChildItem "dist/release/win-arm64-unpacked/zApkStart.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $exe) { $exe = Get-ChildItem "dist/**/zApkStart.exe" | Where-Object { $_.FullName -notlike '*win-arm64*' -eq $false } | Select-Object -First 1 }
           if (-not $exe) { Write-Error "未找到 arm64 产物 zApkStart.exe"; exit 1 }
           node scripts/check-pe-arch.js $exe.FullName --expect arm64

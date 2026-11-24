@@ -789,7 +789,7 @@ module.exports = {
   group_title_runtime_adv: '运行时',
   label_runtime_adv: '运行时',
   runtime_engine_label: 'zApkStart 自带运行时（QEMU + Android 14，独立运行）',
-  sub_runtime_only: 'zApkStart 只跑自己的运行时：adb / emulator / 系统镜像都由它自己下载和管理，不探测、不接管、不依赖你电脑上装的任何模拟器（MuMu / 雷电 / 蓝叠 / WSA 都不会被使用）。这样换机器、别人装没装模拟器、模拟器怎么升级，都不影响这里。',
+  sub_runtime_only: "应用始终运行在上面选择的引擎里（默认自带运行时）。自带运行时完全自持：adb / emulator / 系统镜像都由 zApkStart 自己下载和管理 —— 第三方模拟器（MuMu / 雷电 / 蓝叠 / FydeOS）从不被探测、从不被接管。当你显式切换到 WSA 时，应用在 WSA 自己的窗口里运行，只经 adb 驱动；它的 VM 和数据都归你。",
   label_adb_path: 'adb 路径',
   adb_path_placeholder: '留空则自动在 PATH / Android SDK 中查找',
   label_device_addr: '设备地址',
@@ -913,4 +913,13 @@ module.exports = {
   splash_firstrun_bundled_2: '把系统镜像展开到用户目录（约 1 分钟，只需一次）',
   splash_firstrun_bundled_3: '准备硬件加速与中文输入法',
   splash_firstrun_bundled_4: '完成后双击 APK 或桌面图标即可秒开应用',
+
+  // ---- 引擎底座选择器（WSA，docs/zapkstart/wsa-backend.md）----
+  opt_engine_builtin: '自带运行时（QEMU + Android 14）',
+  opt_engine_wsa: 'Windows Subsystem for Android（WSA）',
+  sub_engine_switch_warn: '切换引擎不会搬移已装应用 —— 每个应用都留在它当初安装的引擎上。在 x64 上，WSA 会打开 Hyper-V，这会让自带运行时的 AEHD 加速失效（两个引擎都仍然可用）。',
+  sub_runtime_mode_wsa: 'WSA 模式：应用在 WSA 自己的 freeform 窗口里运行，底座是原生 ARM64 的安卓子系统，只经 adb 驱动。VM 归用户管理 —— 没有快照、没有面板旋转、没有键位钩子（那些是自带运行时的能力）。x86-only 应用和 Play 认证不保证：core-lane 构建没有 Google 服务。',
+  engine_switch_confirm: '切换引擎？已装的应用不会搬移：每个应用都继续在它当初安装的引擎上启动。现在切换吗？',
+  engine_switch_done_title: '引擎已切换',
+  engine_switch_done_body: '下一次启动应用起使用新引擎。装在另一个引擎上的应用仍会在那边启动。',
 };

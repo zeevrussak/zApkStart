@@ -111,6 +111,10 @@ contextBridge.exposeInMainWorld('zapkstart', {
   clearLocks: () => invoke('app:clearLocks'),
   removeSelf: () => invoke('app:removeSelf'),
   setSharedDir: (dir) => invoke('settings:setSharedDir', dir),
+  // WSA 指南链接（固定 URL 在主进程侧，渲染层只发意图 —— 显式点击才会打开）
+  wsaOpenGuide: () => invoke('wsa:openGuide'),
+  // WSA 探测（设置页引擎分段控件的显示条件）
+  wsaDetect: () => invoke('wsa:detect'),
 
   // 在线更新（GitHub Releases）
   updateCheck: (opts) => invoke('app:updateCheck', opts || {}),

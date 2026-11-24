@@ -637,10 +637,19 @@
         <div class="group-title" data-i18n="ui.group_title_runtime_adv">Runtime</div>
         <div class="field">
           <label data-i18n="ui.label_runtime_adv">Runtime</label>
-          <div class="row">
+          <!-- 引擎分段控件（docs/zapkstart/wsa-backend.md）：只在本机探测到 WSA 时显示。
+               元素 id 固定为 setEngineBackend（旧的下拉名是禁用词，standalone-test 会拦）。 -->
+          <div class="row" id="engineBackendRow" hidden>
+            <select id="setEngineBackend">
+              <option value="builtin" data-i18n="ui.opt_engine_builtin">Bundled runtime (QEMU + Android 14)</option>
+              <option value="wsa" data-i18n="ui.opt_engine_wsa">Windows Subsystem for Android (WSA)</option>
+            </select>
+            <span class="sub" id="engineSwitchWarn" hidden data-i18n="ui.sub_engine_switch_warn">Switching engines does not move installed apps — each app stays on the engine it was installed on. On x64, WSA enables Hyper-V which disables AEHD acceleration for the bundled runtime (both engines remain usable).</span>
+          </div>
+          <div class="row" id="engineLabelRow">
             <input id="setEngineLabel" type="text" readonly data-i18n-val="ui.runtime_engine_label" value="zApkStart bundled runtime (QEMU + Android 14, standalone)" />
           </div>
-          <span class="sub" data-i18n="ui.sub_runtime_only">zApkStart only runs its own runtime: adb / emulator / system images are downloaded and managed by itself, without probing, adopting or depending on any emulator installed on your machine (MuMu / LDPlayer / BlueStacks / WSA are never used). Changing machines, other people's emulators or emulator upgrades thus never affect it.</span>
+          <span class="sub" id="engineModeNote" data-i18n="ui.sub_runtime_only">Apps always run in the engine selected above (the bundled runtime by default). The bundled runtime is fully self-managed: adb / emulator / system images are downloaded and managed by zApkStart itself — third-party emulators (MuMu / LDPlayer / BlueStacks / FydeOS) are never probed or adopted. When you explicitly switch to WSA, apps run in WSA's own windows and are driven only over adb; its VM and data stay yours.</span>
         </div>
         <div class="field">
           <label data-i18n="ui.label_adb_path">adb path</label>

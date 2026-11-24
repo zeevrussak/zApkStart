@@ -28,7 +28,8 @@ const store = require('../store');
 const { t } = require('../i18n');
 
 /** WSA App 的 AUMID：explorer shell: 打开它的设置界面 = 拉起子系统 VM */
-const WSA_AUMID = 'MicrosoftCorporationII.WindowsSubsystemForAndroid_cw5n1h2txyewy!Microsoft.WindowsSubsystemForAndroid';
+const WSA_AUMID = 'MicrosoftCorporationII.WindowsSubsystemForAndroid'
+  + '_cw5n1h2txyewy!Microsoft.WindowsSubsystemForAndroid';
 
 /** WSA 的 adb 端口：5855 官方默认；5555 在部分社区构建上出现过（回退一次并持久化） */
 const PRIMARY_PORT = store.DEFAULT_WSA_PORT;
@@ -39,6 +40,13 @@ const CONNECT_POLL_INTERVAL = 2000;
 const CONNECT_POLL_TRIES = 45;
 /** 端口回退的轮询预算：2s × 15 = 30 秒（只验证端口，不做完整开机等待） */
 const PORT_FALLBACK_TRIES = 15;
+
+/** 单测可注入的轮询预算（与 probeFn/clientFactory 同一套注入缝） */
+const DEFAULT_BUDGET = {
+  tries: CONNECT_POLL_TRIES,
+  intervalMs: CONNECT_POLL_INTERVAL,
+  fallbackTries: PORT_FALLBACK_TRIES,
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -61,6 +69,7 @@ class WsaBackend extends Backend {
      */
     this._probeFn = deps.probeFn || null;
     this._clientFactory = deps.clientFactory || null;
+    this._budget = { ...DEFAULT_BUDGET, ...(deps.budget || {}) };
     /** 本次进程里见过 adb 设备 = running() 的依据（VM 归 WSA 管，我们只有传输视角） */
     this._vmSeen = false;
     /** 与 Runtime.ensure 同款幂等：预热/用户点击并发时共用同一个 Promise */
@@ -146,9 +155,11 @@ class WsaBackend extends Backend {
         const probeCmd = await client.shell('getprop sys.boot_completed', { timeout: 8000 }).catch(() => null);
         if (probeCmd !== null) return { ok: true, client, state: 'device' };
       }
-      if (i > 0 && i % 10 === 0) onLog(t('wsa.connect_wait', { sec: Math.round((i * CONNECT_POLL_INTERVAL) / 1000) }));
+      if (i > 0 && i % 10 === 0) {
+        onLog(t('wsa.connect_wait', { sec: Math.round((i * this._budget.intervalMs) / 1000) }));
+      }
       // eslint-disable-next-line no-await-in-loop
-      await sleep(CONNECT_POLL_INTERVAL);
+      await sleep(this._budget.intervalMs);
     }
     return { ok: false, client: null, state: 'no-device' };
   }
@@ -213,7 +224,7 @@ class WsaBackend extends Backend {
     // 2) VM 可能没起：explorer 拉起 WSA，然后按 90 秒预算轮询 connect
     onLog(t('wsa.starting_vm'));
     await this._startVm();
-    r = await this._trySerial(serial, CONNECT_POLL_TRIES, onLog);
+    r = await this._trySerial(serial, this._budget.tries, onLog);
     if (r.ok) return this._finish(r, serial, { reused: false }, onLog);
     if (r.state === 'unauthorized') {
       return { ok: false, error: t('wsa.unauthorized'), needs: 'wsa-unauthorized' };
@@ -223,7 +234,7 @@ class WsaBackend extends Backend {
     if (port !== FALLBACK_PORT) {
       onLog(t('wsa.port_fallback', { port: FALLBACK_PORT }));
       const fbSerial = `127.0.0.1:${FALLBACK_PORT}`;
-      r = await this._trySerial(fbSerial, PORT_FALLBACK_TRIES);
+      r = await this._trySerial(fbSerial, this._budget.fallbackTries);
       if (r.ok) {
         try { storeDeps.saveSettings({ engine: { wsaPort: FALLBACK_PORT } }); } catch (_) { /* 设置写不进不影响连接 */ }
         onLog(t('wsa.port_saved', { port: FALLBACK_PORT }));

@@ -1469,6 +1469,7 @@ class Runtime {
         lastFailure: persisted,
         runtimeDir: env.root,
         serial: this.emuSerial,
+        backend: this.backendId,
         bootLog: this.bootLog,
       },
     });

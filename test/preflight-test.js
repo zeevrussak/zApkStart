@@ -248,6 +248,49 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
     assert.deepEqual(a.driver, b.driver);
   });
 
+  console.log('\n[WSA 卡片（docs/zapkstart/wsa-backend.md）]');
+  const arch = require('../src/core/arch');
+
+  test('ARM64 + WSA found：推荐卡（能力描述，不改 tier）+ 显式点击链接', () => {
+    arch._setHostArchForTest('arm64');
+    const hw = {
+      machineArch: 'arm64', cpu: {}, memory: {}, gpu: {},
+      virtualization: { hypervisorPlatform: 'enabled', winHvApi: true, hypervisorPresent: true },
+      osBuild: 22631,
+    };
+    const r = preflight.evaluate({ hw, settings: {}, edition: 'installer', wsa: 'available' });
+    const card = r.items.find((i) => i.key === 'wsa-found');
+    assert(card, '缺少 wsa-found 卡');
+    assert(card.level === 'ok', 'found 卡应为 ok');
+    assert(card.action && card.action.kind === 'link', '链接动作必须显式点击（kind=link）');
+    assert(String(preflight.WSA_BUILDS_URL).includes('MustardChef/WSABuilds'), '链接指向社区续作');
+    // 红线：卡片只描述能力，tier / 引擎默认值原样
+    assert(arch.runtimePlan('arm64').tier === 'shell-native', 'tier 被 WSA 卡片改动');
+    assert(arch.runtimePlan('arm64').engineDefault === 'gate', 'engineDefault 被 WSA 卡片改动');
+    arch._setHostArchForTest('x64');
+  });
+
+  test('ARM64 + WSA absent：中性引导卡；x64 absent：不出卡；unknown：不出卡', () => {
+    arch._setHostArchForTest('arm64');
+    const hw = { machineArch: 'arm64', cpu: {}, memory: {}, gpu: {}, virtualization: {}, osBuild: 22631 };
+    const r = preflight.evaluate({ hw, settings: {}, edition: 'installer', wsa: 'absent' });
+    assert(r.items.some((i) => i.key === 'wsa-absent'), '缺少 wsa-absent 引导卡');
+    arch._setHostArchForTest('x64');
+    const hw64 = { machineArch: 'x64', cpu: {}, memory: {}, gpu: {}, virtualization: {}, osBuild: 22631 };
+    const ax = preflight.evaluate({ hw: hw64, settings: {}, edition: 'installer', wsa: 'absent' });
+    assert(!ax.items.some((i) => String(i.key).startsWith('wsa-')), 'x64 absent 不应出 WSA 卡');
+    const fx = preflight.evaluate({ hw: hw64, settings: {}, edition: 'installer', wsa: 'available' });
+    const info = fx.items.find((i) => i.key === 'wsa-found-x64');
+    assert(info, 'x64 + found 缺少信息卡（附 AEHD 说明）');
+    assert(!info.action, 'x64 信息卡不带链接动作');
+    const uk = preflight.evaluate({ hw: hw64, settings: {}, edition: 'installer', wsa: 'unknown' });
+    assert(!uk.items.some((i) => String(i.key).startsWith('wsa-')), '探测未知不应出卡');
+    // 显式入参缺失且 hw 无字段 → unknown → 无卡（旧行为不变）
+    const legacy = preflight.evaluate({ hw: hw64, settings: {}, edition: 'installer' });
+    assert(!legacy.items.some((i) => String(i.key).startsWith('wsa-')), '旧调用不应出 WSA 卡');
+    arch._setHostArchForTest('x64');
+  });
+
   console.log(`\n结果：${passed} 通过，${failed} 失败\n`);
   process.exit(failed ? 1 : 0);
 })();

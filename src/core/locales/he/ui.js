@@ -789,7 +789,7 @@ module.exports = {
   group_title_runtime_adv: 'רנטיים',
   label_runtime_adv: 'רנטיים',
   runtime_engine_label: 'רנטיים מובנה של zApkStart (QEMU + Android 14, עצמאי)',
-  sub_runtime_only: 'zApkStart מריץ רק את הרנטיים שלו: adb / emulator / תמונות המערכת מורדים ומנוהלים על ידו בעצמו, בלי גילוי, אימוץ או תלות באמולטורים המותקנים במחשב שלך (MuMu / LDPlayer / BlueStacks / WSA לעולם לא בשימוש). כך החלפת מחשב, אמולטורים של אחרים או שדרוגי אמולטור לעולם לא משפיעים כאן.',
+  sub_runtime_only: "אפליקציות תמיד רצות במנוע שנבחר למעלה (ברירת המחדל: זמן הריצה המובנה). זמן הריצה המובנה מנוהל כולו בעצמו: adb / emulator / תמונות המערכת מורדים ומנוהלים על ידי zApkStart — אמולטורים של צד שלישי (MuMu / LDPlayer / BlueStacks / FydeOS) לעולם אינם נבדקים או נתפסים. כשעוברים במפורש ל-WSA, האפליקציות רצות בחלונות של WSA עצמו ומנוהלות רק דרך adb; ה-VM והנתונים נשארים שלך.",
   label_adb_path: 'נתיב adb',
   adb_path_placeholder: 'השאר ריק לחיפוש אוטומטי ב-PATH / Android SDK',
   label_device_addr: 'כתובת המכשיר',
@@ -913,4 +913,13 @@ module.exports = {
   splash_firstrun_bundled_2: 'הוצאת תמונת המערכת לתיקיית המשתמש (כדקה, פעם אחת בלבד)',
   splash_firstrun_bundled_3: 'הכנת האצת חומרה ושיטת הקלדה בסינית',
   splash_firstrun_bundled_4: 'לאחר מכן לחיצה כפולה על APK או קיצור דרך תפתח אפליקציות מיד',
+
+  // ---- בורר מנוע (WSA, docs/zapkstart/wsa-backend.md) ----
+  opt_engine_builtin: 'זמן ריצה מובנה (QEMU + Android 14)',
+  opt_engine_wsa: 'Windows Subsystem for Android (WSA)',
+  sub_engine_switch_warn: 'מעבר בין מנועים אינו מעביר אפליקציות מותקנות — כל אפליקציה נשארת במנוע שבו הותקנה. ב-x64, WSA מפעיל Hyper-V שמנטרל את האצת AEHD של זמן הריצה המובנה (שני המנועים נשארים שמישים).',
+  sub_runtime_mode_wsa: 'מצב WSA: האפליקציות רצות בחלונות ה-freeform של WSA על תת-מערכת Android עם ARM64 טבעי, ומנוהלות רק דרך adb. ה-VM נשאר בניהול המשתמש — בלי תמונות מצב, בלי סיבוב פאנל, בלי הוקים של מקלדת (אלה יכולות של זמן הריצה המובנה). אפליקציות x86 בלבד ואישור Play אינם מובטחים: ל-builds מסוג core-lane אין שירותי Google.',
+  engine_switch_confirm: 'להחליף מנוע? אפליקציות מותקנות אינן זזות: כל אפליקציה תמשיך להיפתח במנוע שבו הותקנה. להחליף עכשיו?',
+  engine_switch_done_title: 'המנוע הוחלף',
+  engine_switch_done_body: 'המנוע החדש נכנס לפעולה החל מהפעלת האפליקציה הבאה. אפליקציות שהותקנו במנוע השני ימשיכו להיפתח שם.',
 };

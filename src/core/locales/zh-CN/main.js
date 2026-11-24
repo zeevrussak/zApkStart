@@ -178,4 +178,11 @@ module.exports = {
 
   // ---- 低磁盘提示 ----
   toast_low_disk: '磁盘只剩 {gb} GB，安卓可能无法启动（设置 → 系统集成 可换盘）',
+
+  // ---- 每应用路由（WSA 底座，docs/zapkstart/wsa-backend.md）----
+  route_mismatch_builtin_on_wsa: '{app} 装在自带运行时里。切回自带运行时打开，或为 WSA 重装一次 —— 它的数据不会跟着迁移。',
+  route_mismatch_wsa_on_builtin: '{app} 装在 WSA 里。把引擎切到 WSA 打开，或在自带运行时里重装一次 —— 它的数据不会跟着迁移。',
+  wsa_launch_ok: '{app} 已在 WSA 里启动（{ms}ms）：应用打开在它自己的 WSA 窗口中',
+  uninstall_remote_only: '本地记录已卸载。应用本体还在另一个引擎上 —— 切换引擎后再卸载一次才能删掉它。',
+
 };

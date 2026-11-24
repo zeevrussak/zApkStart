@@ -99,9 +99,10 @@ function touch(dir, rel, bytes = 8) {
     const pick = src.slice(src.indexOf('async function autoPick'));
     assert(!/\.probe\(/.test(pick), 'autoPick 仍在探测');
     assert(/builtin-only/.test(pick), 'autoPick 不再是 builtin-only');
-    // 注册表本体不许出现第三方模拟器
-    assert(!/mumu|fydeos|ldplayer|bluestacks/i.test(src.replace(/[\s\S]*?const REGISTRY[\s\S]*?\];/, '')),
-      '注册表里还有第三方底座');
+    // 注册表数组本体不许出现第三方模拟器（只扫数组块，文档注释里的提及不算）
+    const reg = src.slice(src.indexOf('const REGISTRY'), src.indexOf('];', src.indexOf('const REGISTRY')));
+    assert(!/mumu|fydeos|ldplayer|bluestacks/i.test(reg), '注册表里还有第三方底座');
+    assert(/BuiltinBackend/.test(reg) && /WsaBackend/.test(reg), '注册表应包含 builtin 与 wsa');
   });
 
   console.log('\n[独立运行 · 第三方底座代码已删除]');
@@ -130,9 +131,10 @@ function touch(dir, rel, bytes = 8) {
     assert(!/ATTACH_ENDPOINTS/.test(src), '还在探测外部模拟器的 adb 端口');
   });
 
-  test('设置页没有引擎模式下拉，也没有 MuMu / FydeOS 字段', () => {
+  test('设置页的引擎选择器叫 setEngineBackend（探测命中才显示），没有第三方字段', () => {
     const html = read('src', 'ui', 'index.html');
-    assert(!/setEngineMode/.test(html), '设置页仍有引擎模式下拉');
+    assert(!/setEngineMode/.test(html), '设置页仍有被禁用的引擎模式下拉名');
+    assert(/id="setEngineBackend"/.test(html), '设置页缺少 setEngineBackend 分段控件（WSA 入口）');
     assert(!/value="mumu"|value="fydeos"|value="attach"/.test(html), '设置页仍有第三方选项');
     assert(!/setMumuPath|setMumuMemGB|setMumuCores|setFydeosHost/.test(html), '设置页仍有第三方字段');
     assert(/id="setEngineLabel"/.test(html), '设置页缺少只读的运行时说明');

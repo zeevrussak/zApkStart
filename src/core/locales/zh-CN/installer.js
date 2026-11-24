@@ -46,4 +46,8 @@ module.exports = {
   launch_retry: '应用启动后退出（第 {attempt} 次），正在自动重试…',
   reset_and_retry: '应用连续退出，正在重置应用数据后重试…',
   app_unstable: '应用启动后立即退出，已自动重试并重置应用数据仍未成功',
+
+  // ---- WSA 的 ABI 方向（docs/zapkstart/wsa-backend.md）----
+  wsa_x86_only: '{label} 只带了 x86 原生库，而这台设备跑的是 ARM 安卓（WSA）。请找这个应用的 ARM 兼容版本；这个 APK 在这里装不了。',
+  wsa_arm_translation: '{label} 需要支持 ARM 的 WSA 构建（WSABuilds 的 ARM-enabled 变体）。当前这个 WSA 构建跑不动它的原生库。',
 };

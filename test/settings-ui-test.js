@@ -108,6 +108,12 @@ app.whenReady().then(async () => {
   fs.mkdirSync(OUT, { recursive: true });
 
   for (const ch of CHANNELS) ipcMain.handle(ch, async () => ({}));
+  // i18n：渲染层走真桥（preload），这里按 zh-CN 解析（文案断言钉住中文，
+  // 与 engine/drivers/preflight 测试同一约定）
+  const i18n = require('../src/core/i18n');
+  i18n.setActiveT('zh-CN', '');
+  // 只传纯数据（函数过不了 structured clone）——preload 侧自己 makeT
+  ipcMain.handle('i18n:state', () => ({ locale: 'zh-CN', dir: i18n.dirFor('zh-CN'), pref: 'zh-CN', osLocale: '' }));
   for (const [ch, fn] of Object.entries(OVERRIDES)) ipcMain.handle(ch, async (_e, ...args) => fn(...args));
 
   const win = new BrowserWindow({

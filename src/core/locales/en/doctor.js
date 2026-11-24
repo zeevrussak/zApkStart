@@ -56,4 +56,9 @@ module.exports = {
   report_section_diag: '== Diagnosis ==',
   report_section_extra: '== Extra info ==',
   report_section_log: '== Runtime log (last 300 lines) ==',
+
+  // ---- WSA branch (docs/zapkstart/wsa-backend.md) ----
+  wsa_diag_title: 'WSA runtime diagnosis',
+  wsa_diag_hint: 'On WSA, failures are usually transport-level: the Developer-mode ADB toggle is off, the debugging authorization dialog is unanswered, or the subsystem was closed. Opening any installed app brings WSA back up. Core-lane builds have no Google services (GMS-dependent apps cannot run).',
+  wsa_aehd_note: 'On x64 hosts, enabling WSA turns on Hyper-V which disables AEHD acceleration for the bundled runtime; both engines remain usable (QEMU falls back to WHPX or software emulation).',
 };

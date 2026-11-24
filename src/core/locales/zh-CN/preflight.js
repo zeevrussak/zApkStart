@@ -75,4 +75,12 @@ module.exports = {
   summary_bad: '发现 {count} 项必须先处理（{titles}）',
   summary_warn: '有 {count} 项建议优化（{titles}）',
   summary_good: '这台机器可以直接跑硬件加速，配置已经是最优',
+
+  // ---- WSA 卡片（docs/zapkstart/wsa-backend.md 措辞规则：中性、显式点击）----
+  wsa_found_title: '检测到 WSA —— 这台机器上原生跑应用的实际途径',
+  wsa_found_detail_arm64: 'Hyper-V 虚拟机里的原生 ARM64 Android 13 —— 没有 CPU 模拟。应用在 WSA 自己的 freeform 窗口里、经 adb 运行；x86-only 和依赖 Play 认证的应用跑不了（core-lane 构建没有 Google 服务）。',
+  wsa_found_detail_x64: '已安装 WSA。注意：启用 WSA 会打开 Hyper-V，这会停用自带运行时的 AEHD 加速 —— 两个引擎都仍然可用（QEMU 落到 WHPX/软件模拟）。',
+  wsa_absent_title: '未安装 Windows Subsystem for Android',
+  wsa_absent_detail_arm64: '微软已于 2025 年 3 月结束 WSA 支持；存在一个社区续作（与微软无隶属关系、也未获微软背书）：MustardChef/WSABuilds。安装前请先阅读其条款。WSA 在 ARM64 上原生运行应用，没有 CPU 模拟。',
+  wsa_link_action: '了解 WSA（社区续作）',
 };
